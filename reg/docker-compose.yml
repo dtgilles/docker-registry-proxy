@@ -1,0 +1,17 @@
+nginxauth:
+   build: nginxauth
+   ports:
+    - "1082:80"
+
+nginxp:
+   build: nginxp
+   ports:
+     - "1080:80"
+
+nginx-acl:
+   build: nginx-acl
+   ports:
+     - "1081:80"
+   links:
+     - nginxp
+     - nginxauth

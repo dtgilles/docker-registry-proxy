@@ -1,0 +1,28 @@
+server {
+    listen                80;
+    server_name           localhost;
+    root                  /usr/share/nginx/html;
+    auth_basic           "docker registry";
+    auth_basic_user_file  /etc/nginx/htpasswd;
+    set     $acl         "/$request_method/$remote_user/";
+
+    location /auth/dreg {
+       if ($acl ~ "^/(POST|PUT|PATCH)/(rene)/$" ) { rewrite /.* /empty  break; }
+       if ($acl ~ "^/(GET)/(testuser|rene)/$"   ) { rewrite /.* /empty  break; }
+    }
+    location /auth {
+       return 401;
+    }
+}
+#       if ($request_uri != /empty ){
+#           return 401;
+#       }
+#       if ($acl ~ "^/(POST|PUT|PATCH)/(rene)/$" ) {
+#          rewrite /.* /empty  break;
+#       }
+#       if ($acl ~ "^/(GET)/(testuser|rene)/$" ) {
+#          rewrite /.* /empty  break;
+#       }
+#       if ($request_uri != /empty ){
+#           return 401;
+#       }
