@@ -1,0 +1,45 @@
+server {
+    listen        443;
+    ssl on;
+    server_name   %%ServerName%%;
+    #
+    set $ssl_client_s_dn    "not found";
+    ssl_certificate         %%DataDir%%/certs/server.crt;
+    ssl_certificate_key     %%DataDir%%/certs/server.key;
+    ssl_client_certificate  %%DataDir%%/certs/client-ca.crt;
+    ssl_password_file       %%DataDir%%/certs/secrets;
+    ssl_verify_client       optional;
+    #####      this is empty
+    location / {
+        root   %%DataDir%%/html;
+        index  index.html index.htm;
+    }
+    location /dreg/ {
+       #####  1)  authorize requests
+       auth_request /preauth;
+       ####   2)  proxy requests
+       proxy_pass              http://testserv;
+       proxy_redirect          off;
+       proxy_set_header        Host            $host;
+       proxy_set_header        X-Real-IP       $remote_addr;
+       proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+    location /preauth {
+       internal;
+       rewrite  ^.*$           /auth$request_uri;
+    }
+    location /auth {
+       internal;
+       ##### get user (=common name) from ssl client certificate
+       set $ssl_user          "anonymous";
+       if ($ssl_client_s_dn ~ "/CN=([^/]+)" ) {
+          set $ssl_user        $1;
+       }
+       proxy_pass              http://authorize;
+       proxy_redirect          off;
+       proxy_pass_request_body off;
+       proxy_set_header        Content-Length     "";
+       proxy_set_header        ssl_user           $ssl_user;
+       proxy_set_header        Authorization      $http_authorization;
+    }
+}

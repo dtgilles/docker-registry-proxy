@@ -1,0 +1,37 @@
+
+##### authorize web-requests and certificate authority
+authorize:
+   build: authorize
+   volumes_from:
+     - vol_ca_private:rw
+   ports:
+     - "1082:80"
+
+testserv:
+   build: testserv
+   ports:
+     - "1080:80"
+
+reverse_proxy:
+   build: nginx-acl
+   volumes_from:
+     - vol_reverse_proxy:rw
+   ports:
+     - "1081:443"
+   links:
+     - testserv
+     - authorize
+
+################################################################
+#                           volumes                            #
+################################################################
+##### private volume for certificate authority
+vol_ca_private:
+   image: busybox
+   volumes:
+     - /docker/data/ca_vol:/data/ca_private
+##### private volume for certificate authority
+vol_reverse_proxy:
+   image: busybox
+   volumes:
+     - /docker/data/reverse_proxy:/data/reverse_proxy

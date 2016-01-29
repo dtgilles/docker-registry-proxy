@@ -1,3 +1,0 @@
-location /auth/dreg
-POST|PUT|PATCH		rene
-GET			testuser|rene

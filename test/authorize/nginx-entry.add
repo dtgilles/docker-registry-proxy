@@ -1,0 +1,73 @@
+if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
+   then
+      ##### $START_NGINX is yes, Yes, Ja or ja, so continue starting nginx
+      [ -r /etc/default/nginx ] &&  . /etc/default/nginx
+      sed   -e "s;%%RP_Dir%%;$RP_Dir;g" \
+            -e "s;%%CA_Dir%%;$CA_Dir;g" \
+            -e "s;%%RP_Name%%;$RP_Name;g" \
+      <         /etc/nginx/conf.d/default.conf.template \
+      >         /etc/nginx/conf.d/default.conf
+      chmod 644 /etc/nginx/conf.d/default.conf
+      test -f   $CA_DIR/permission.info \
+      || cp     /etc/nginx/perms.info.xmpl \
+                $CA_DIR/permission.info
+      /etc/nginx/perms.sh  \
+                $CA_DIR/permission.info \
+                $CA_DIR/permission.conf
+      mkdir -p  $CA_Dir/certs  $CA_Dir/html \
+                $RP_Dir/certs  $RP_Dir/html \
+      #
+      ##### if certificates are missed then create them
+      if [ ! -f $CA_Dir/certs/client-ca.crt ]
+         then
+            # todo: create intermediary CA, substitute root ca by this intermediate for all operational tasks
+            # Create the CA Key and Certificate for signing Client Certs
+            openssl genrsa   -des3           -out    $CA_Dir/certs/client-ca.key -passout pass:a8erq894rifu89 4096
+            openssl req -new -x509 -days 365 -key    $CA_Dir/certs/client-ca.key -passin  pass:a8erq894rifu89 \
+                                             -out    $CA_Dir/certs/client-ca.crt \
+                                             -subj   "/C=DE/ST=Hessen/L=Darmstadt/CN=client ca"
+            # the following commands are needed for crl creation or more general "openssl ca ..."
+            echo 01 > $CA_Dir/serial
+            echo 01 > $CA_Dir/crlnumber
+            :>        $CA_Dir/index.txt
+            cp /usr/lib/ssl/openssl.cnf $CA_Dir/openssl.conf
+            sed  -i -e "s|^HOME.*= .*$|HOME      = $CA_Dir|" \
+                    -e "s|^dir.*= ..*$|dir       = $CA_Dir|" $CA_Dir/openssl.conf
+            # ... create crl...
+            openssl ca -config $CA_Dir/openssl.conf -cert    $CA_Dir/certs/client-ca.crt \
+                       -gencrl                      -keyfile $CA_Dir/certs/client-ca.key \
+                       -key    a8erq894rifu89       -out     $CA_Dir/certs/crl.pem
+            # crt und crl are public -- so export them (reverse proxy could get them)
+            cp -p   $CA_Dir/certs/client-ca.crt              $CA_Dir/html/client-ca.crt
+            cp -p   $CA_Dir/certs/crl.pem                    $CA_Dir/html/crl.pem
+            # ca is prepared, so continue preparing reverse proxy
+            cp -p   $CA_Dir/certs/client-ca.crt              $RP_Dir/certs/client-ca.crt
+            cp -p   $CA_Dir/certs/crl.pem                    $RP_Dir/certs/crl.pem
+            #
+            # Create the Client Key and CSR
+            # openssl genrsa -des3 -out client.key 1024
+            # openssl req -new -key client.key -out client.csr
+            # Sign the client certificate with our CA cert.  Unlike signing our own server cert, this is what we want to do.
+            # openssl x509 -req -days 365 -in  client.csr -CA    $CA_Dir/certs/client-ca.crt -key a8erq894rifu89 \
+            #                                             -CAkey $CA_Dir/certs/client-ca.key -set_serial 01 \
+            #                             -out client.crt
+         fi
+      if [ ! -f $CA_Dir/htpasswd ]
+         then
+            cp /etc/nginx/htpasswd.xmpl   $CA_Dir/htpasswd
+         fi
+      if [ ! -f $RP_Dir/certs/server.crt ]
+         then
+            # Create the Server Key, CSR, and Certificate
+            openssl genrsa -des3             -out    $RP_Dir/certs/server.key -passout pass:q908z34895uojfa8459823uoi 2048
+            echo "q908z34895uojfa8459823uoi" >       $RP_Dir/certs/secrets
+            openssl req     -new             -key    $RP_Dir/certs/server.key -passin  pass:q908z34895uojfa8459823uoi \
+                                             -out    $RP_Dir/certs/server.csr \
+                                             -subj   "/C=DE/ST=Hessen/L=Darmstadt/CN=$ServerName"
+            #
+            # We're self signing our own server cert here.  This is a no-no in production.
+            openssl x509 -req -days 365 -in  $RP_Dir/certs/server.csr -CA     $CA_Dir/certs/client-ca.crt \
+                                        -out $RP_Dir/certs/server.crt -CAkey  $CA_Dir/certs/client-ca.key \
+                                        -passin  pass:a8erq894rifu89  -config $CA_Dir/openssl.conf
+         fi
+   fi

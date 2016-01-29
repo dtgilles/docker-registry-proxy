@@ -1,0 +1,15 @@
+##### ".*" matches to all http methods (first column) or all users (second column)
+location    /auth/v2/group1/repo2/
+.*		testadmin|kunz
+read		.*
+
+location    /auth/v2/group1/repo1/
+write		testadmin|hinz
+read		testuser
+
+##### you need these general rules to connect a client to registry
+location ~ ^/auth/v2/$
+read		all
+
+location    /auth/v2/_catalog
+read		.*

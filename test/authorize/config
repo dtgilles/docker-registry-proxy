@@ -1,0 +1,14 @@
+server {
+    listen                80;
+    server_name           localhost;
+    root                  %%CA_Data%%/html;
+    auth_basic           "%%RP_Name%%";
+    auth_basic_user_file  %%CA_Data%%/htpasswd;
+    set     $acl         "/$request_method/$remote_user/";
+    # this is the generated permission controll list
+    include               %%CA_Data%%/permission.conf;
+    # return  403 (authorization failed) at the end...
+    location /auth {
+       return 403;
+    }
+}
