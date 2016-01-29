@@ -5,17 +5,17 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
       sed   -e "s;%%RP_Dir%%;$RP_Dir;g" \
             -e "s;%%CA_Dir%%;$CA_Dir;g" \
             -e "s;%%RP_Name%%;$RP_Name;g" \
-      <         /etc/nginx/conf.d/default.conf.template \
+      <         /etc/nginx/default.conf.template \
       >         /etc/nginx/conf.d/default.conf
       chmod 644 /etc/nginx/conf.d/default.conf
-      test -f   $CA_DIR/permission.info \
-      || cp     /etc/nginx/perms.info.xmpl \
-                $CA_DIR/permission.info
-      /etc/nginx/perms.sh  \
-                $CA_DIR/permission.info \
-                $CA_DIR/permission.conf
       mkdir -p  $CA_Dir/certs  $CA_Dir/html \
-                $RP_Dir/certs  $RP_Dir/html \
+                $RP_Dir/certs  $RP_Dir/html
+      test -f   $CA_Dir/permission.info \
+      || cp     /etc/nginx/perm.info.xmpl \
+                $CA_Dir/permission.info
+      /etc/nginx/perm.sh  \
+                $CA_Dir/permission.info \
+                $CA_Dir/permission.conf
       #
       ##### if certificates are missed then create them
       if [ ! -f $CA_Dir/certs/client-ca.crt ]
@@ -29,6 +29,7 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
             # the following commands are needed for crl creation or more general "openssl ca ..."
             echo 01 > $CA_Dir/serial
             echo 01 > $CA_Dir/crlnumber
+            echo 01 > $CA_Dir/certs/client-ca.srl
             :>        $CA_Dir/index.txt
             cp /usr/lib/ssl/openssl.cnf $CA_Dir/openssl.conf
             sed  -i -e "s|^HOME.*= .*$|HOME      = $CA_Dir|" \
@@ -63,11 +64,12 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
             echo "q908z34895uojfa8459823uoi" >       $RP_Dir/certs/secrets
             openssl req     -new             -key    $RP_Dir/certs/server.key -passin  pass:q908z34895uojfa8459823uoi \
                                              -out    $RP_Dir/certs/server.csr \
-                                             -subj   "/C=DE/ST=Hessen/L=Darmstadt/CN=$ServerName"
+                                             -subj   "/C=DE/ST=Hessen/L=Darmstadt/CN=$RP_Name"
             #
             # We're self signing our own server cert here.  This is a no-no in production.
             openssl x509 -req -days 365 -in  $RP_Dir/certs/server.csr -CA     $CA_Dir/certs/client-ca.crt \
                                         -out $RP_Dir/certs/server.crt -CAkey  $CA_Dir/certs/client-ca.key \
-                                        -passin  pass:a8erq894rifu89  -config $CA_Dir/openssl.conf
+                                        -passin  pass:a8erq894rifu89
          fi
+      nginx
    fi
