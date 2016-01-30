@@ -6,7 +6,7 @@ output=${2:-${input%.info}.conf}
 ##### helping functin to print acl config line
 print_acl_line()
    {
-      printf '       if ($acl ~ %-40s) { rewrite /.* /empty  break; }\n' \
+      printf '       if ($acl ~ %-40s) { rewrite /.* /ok  break; }\n' \
                     "\"^/(${http_method})/(${user})/$\""
    }
 

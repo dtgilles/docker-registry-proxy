@@ -9,7 +9,7 @@ read		testuser
 
 ##### you need these general rules to connect a client to registry
 location ~ ^/auth/v2/$
-read		all
+read		.*
 
 location    /auth/v2/_catalog
 read		.*

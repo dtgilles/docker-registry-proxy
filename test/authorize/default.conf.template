@@ -1,13 +1,14 @@
 server {
-    listen                80;
-    server_name           localhost;
-    root                  %%CA_Dir%%/html;
-    auth_basic           "%%RP_Name%%";
-    auth_basic_user_file  %%CA_Dir%%/htpasswd;
-    set     $acl         "/$request_method/$remote_user/";
-    # this is the generated permission controll list
-    include               %%CA_Dir%%/permission.conf;
-    # return  403 (authorization failed) at the end...
+    listen                   80;
+    server_name              localhost;
+    root                     /usr/share/nginx/html;
+    auth_basic              "%%RP_Name%%";
+    auth_basic_user_file     %%CA_Dir%%/htpasswd;
+    #
+    set     $acl            "/$request_method/$remote_user/";
+    #
+    include                  %%CA_Dir%%/permission.conf;
+    #
     location /auth {
        return 403;
     }

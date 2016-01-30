@@ -14,11 +14,11 @@ server {
         root   %%DataDir%%/html;
         index  index.html index.htm;
     }
-    location /dreg/ {
+    location /v2/ {
        #####  1)  authorize requests
        auth_request /preauth;
        ####   2)  proxy requests
-       proxy_pass              http://testserv;
+       proxy_pass              http://testserv:5000;
        proxy_redirect          off;
        proxy_set_header        Host            $host;
        proxy_set_header        X-Real-IP       $remote_addr;
