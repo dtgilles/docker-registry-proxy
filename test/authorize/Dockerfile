@@ -19,5 +19,5 @@ ENV  RP_Dir       /data/reverse_proxy
 ENV  RP_Name      example.telekomcloud.de
 
 RUN  f=/usr/share/nginx/html/ok; echo "auth successful" > $f && chmod 0644 $f
-COPY perm.* htpass* defau*     /etc/nginx/
-COPY nginx-entry.add           /etc/default/ssh
+COPY perm.* htpass* defau* user*      /etc/nginx/
+COPY nginx-entry.add                  /etc/default/ssh
