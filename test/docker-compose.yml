@@ -3,6 +3,8 @@ authorize:
    build: authorize
    volumes_from:
      - vol_ssl:rw
+   environment:
+     - START_NGNIX=yes
    ports:
      - "1082:80"
 

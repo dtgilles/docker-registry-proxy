@@ -1,15 +1,17 @@
 server {
-    listen                   80;
-    server_name              localhost;
-    root                     /usr/share/nginx/html;
-    auth_basic              "%%RP_Name%%";
-    auth_basic_user_file     %%CA_Dir%%/htpasswd;
+    listen                      80;
+    server_name                 localhost;
+    root                        /usr/share/nginx/html;
+    set       $username         $http_ssl_user;
+    auth_basic                 "%%RP_Name%%";
+    auth_basic_user_file        %%CA_Dir%%/htpasswd;
+    if ($username != "anonymous") {
+       set     $username        $remote_user;
+    }
+    set     $acl               "/$request_method/$username/";
     #
-    set     $acl            "/$request_method/$remote_user/";
-    #
-    include                  %%CA_Dir%%/permission.conf;
-    #
-    location /auth {
-       return 403;
+    location /auth/ {
+       include                  %%CA_Dir%%/permission.conf;
+       location /auth {         return 401; }
     }
 }
