@@ -1,3 +1,11 @@
+#!bin/bash 
+
+if [ "$CA_PASSWORD_ROOT" != "" ]
+   then
+      /etc/ca/bin/ca.script mk_root_ca         00                           "$CA_PASSWORD_ROOT"
+      /etc/ca/bin/ca.script mk_intermediate_ca 00 "$CA_PASSWORD_INTERDIATE" "$CA_PASSWORD_ROOT"
+   fi
+
 if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
    then
       ##### $START_NGINX is yes, Yes, Ja or ja, so continue starting nginx
@@ -8,8 +16,6 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
       <         /etc/nginx/default.conf.template \
       >         /etc/nginx/sites-enabled/default
       chmod 644 /etc/nginx/sites-enabled/default
-      mkdir -p  $CA_Dir/certs  $CA_Dir/html    $CA_Dir/user    $CA_Dir/crl \
-                $RP_Dir/certs  $RP_Dir/html    /tmp/ca_proc
       test -f   $CA_Dir/permission.info \
       || cp     /etc/nginx/perm.info.xmpl \
                 $CA_Dir/permission.info
@@ -17,94 +23,9 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
                 $CA_Dir/permission.info \
                 $CA_Dir/permission.conf
       #
-      ##### if certificates are missed then create them
-      if [ ! -f $CA_Dir/certs/client-ca.crt ]
-         then
-            # todo: create intermediary CA, substitute root ca by this intermediate for all operational tasks
-            # Create the CA Key and Certificate for signing Client Certs
-            openssl genrsa   -des3           -out    $CA_Dir/certs/client-ca.key -passout pass:a8erq894rifu89 4096
-            openssl req -new -x509 -days 365 -key    $CA_Dir/certs/client-ca.key -passin  pass:a8erq894rifu89 \
-                                             -out    $CA_Dir/certs/client-ca.crt \
-                                             -subj   "/C=DE/ST=Hessen/L=Darmstadt/CN=client ca"
-            # the following commands are needed for crl creation or more general "openssl ca ..."
-            echo 01 > $CA_Dir/serial
-            echo 01 > $CA_Dir/crlnumber
-            echo 01 > $CA_Dir/certs/client-ca.srl
-            :>        $CA_Dir/index.txt
-            cp /usr/lib/ssl/openssl.cnf $CA_Dir/openssl.conf
-            sed  -i -e "s|^HOME.*= .*$|HOME      = $CA_Dir|" \
-                    -e "s|^dir.*= ..*$|dir       = $CA_Dir|" $CA_Dir/openssl.conf
-            # ... create crl...
-            openssl ca -config $CA_Dir/openssl.conf -cert    $CA_Dir/certs/client-ca.crt \
-                       -gencrl                      -keyfile $CA_Dir/certs/client-ca.key \
-                       -key    a8erq894rifu89       -out     $CA_Dir/certs/crl.pem
-            # crt und crl are public -- so export them (reverse proxy could get them)
-            cp -p   $CA_Dir/certs/client-ca.crt              $CA_Dir/html/client-ca.crt
-            cp -p   $CA_Dir/certs/crl.pem                    $CA_Dir/html/crl.pem
-            # ca is prepared, so continue preparing reverse proxy
-            cp -p   $CA_Dir/certs/client-ca.crt              $RP_Dir/certs/client-ca.crt
-            cp -p   $CA_Dir/certs/crl.pem                    $RP_Dir/certs/crl.pem
-         fi
       if [ ! -f $CA_Dir/htpasswd ]
          then
             cp /etc/nginx/htpasswd.xmpl   $CA_Dir/htpasswd
-         fi
-      if [ ! -f $RP_Dir/certs/server.crt ]
-         then
-            # Create the Server Key, CSR, and Certificate
-            openssl genrsa -des3             -out    $RP_Dir/certs/server.key -passout pass:q908z34895uojfa8459823uoi 2048
-            echo "q908z34895uojfa8459823uoi" >       $RP_Dir/certs/secrets
-            openssl req     -new             -key    $RP_Dir/certs/server.key -passin  pass:q908z34895uojfa8459823uoi \
-                                             -out    $RP_Dir/certs/server.csr \
-                                             -subj   "/C=DE/ST=Hessen/L=Darmstadt/CN=$RP_Name"
-            #
-            # We're self signing our own server cert here.  This is a no-no in production.
-            openssl x509 -req -days 365 -in  $RP_Dir/certs/server.csr -CA     $CA_Dir/certs/client-ca.crt \
-                                        -out $RP_Dir/certs/server.crt -CAkey  $CA_Dir/certs/client-ca.key \
-                                        -passin  pass:a8erq894rifu89
-         fi
-      if [ ! -f $CA_Dir/user/Hans-Mustermann.crt ]
-         then
-            ##### ask for certificates passphrase 
-            echo "please type your cert passphrase: "
-            #stty -echo; read userpwd; stty echo
-            userpwd=DasIstEinBeispielPasswort
-            username=Hans-Mustermann
-            ##### Create the Client Key and CSR
-            openssl genrsa     -out      /tmp/ca_proc/${username}.key   -passout pass:$userpwd 2048
-            openssl req -batch -config   /etc/nginx/user_cert.conf      -new  \
-                               -key      /tmp/ca_proc/${username}.key   -passin  pass:$userpwd \
-                               -out      $CA_Dir/user/${username}.csr \
-                               -subj     "/C=DE/ST=Hessen/L=Darmstadt/CN=${username}"
-            ##### Sign the client certificate with our CA cert.  Unlike signing our own server cert, this is what we want to do.
-            openssl x509 -days 365       -req \
-                               -extfile  /etc/nginx/user.ext \
-                               -CA       $CA_Dir/certs/client-ca.crt \
-                               -CAkey    $CA_Dir/certs/client-ca.key \
-                               -passin   pass:a8erq894rifu89 \
-                               -in       $CA_Dir/user/${username}.csr \
-                               -out      $CA_Dir/user/${username}.crt
-                               ### -CAserial serial.txt
-            ##### collect it all together -- that makes handling easier
-            openssl pkcs12    -export     \
-                              -in         $CA_Dir/user/${username}.crt \
-                              -inkey      /tmp/ca_proc/${username}.key \
-                              -CAfile     $CA_Dir/user/${username}.cst \
-                              -name       ${username} \
-                              -certfile   $CA_Dir/certs/client-ca.crt \
-                              -passout    pass:${userpwd} \
-                              -out        /tmp/ca_proc/${username}.p12
-                              #-chain      \
-            unset userpwd
-            ##### revoke this first certificate
-            openssl ca         -config   $CA_Dir/openssl.conf \
-                               -cert     $CA_Dir/certs/client-ca.crt \
-                               -keyfile  $CA_Dir/certs/client-ca.key \
-                               -key      a8erq894rifu89 \
-                               -revoke   $CA_Dir/user/${username}.crt
-                               #>>       $CA_Dir/certs/crl.pem
-                               #-out     $CA_Dir/certs/crl.pem
-            cp -p  $CA_Dir/certs/crl.pem $CA_Dir/index.txt*       $RP_Dir/certs/.
          fi
       nginx
    fi

@@ -12,6 +12,6 @@ server {
     #
     location /auth/ {
        include                  %%CA_Dir%%/permission.conf;
-       location /auth {         return 401; }
+       location /auth/ {        return 401; }
     }
 }

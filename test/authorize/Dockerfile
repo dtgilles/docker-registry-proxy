@@ -8,16 +8,16 @@ RUN  echo 'Acquire::http::proxy "http://cfproxy:8888/";' > /etc/apt/apt.conf \
 	&& rm -rf /var/lib/apt/lists/*
 
 # forward request and error logs to docker log collector
-RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+RUN        ln -sf /dev/stdout /var/log/nginx/access.log \
 	&& ln -sf /dev/stderr /var/log/nginx/error.log
 
 EXPOSE 80
 
-ENV  START_NGINX  yes
-ENV  CA_Dir       /data/ca_private
-ENV  RP_Dir       /data/reverse_proxy
-ENV  RP_Name      example.telekomcloud.de
+# ENV  CA_PASSWORD_ROOT
+# ENV  CA_PASSWORD_INTERMEDIATE
+# ENV  CaBase                    /data/ca_private
+# ENV  START_NGINX               yes
 
 RUN  f=/usr/share/nginx/html/ok; echo "auth successful" > $f && chmod 0644 $f
-COPY perm.* htpass* defau* user*      /etc/nginx/
+COPY ca nginx                         /etc/
 COPY nginx-entry.add                  /etc/default/ssh

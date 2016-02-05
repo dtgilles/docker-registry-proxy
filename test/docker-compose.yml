@@ -8,19 +8,19 @@ authorize:
    ports:
      - "1082:80"
 
-testserv:
+registry:
    image: registry:2
    ports:
      - "5000"
 
 rep:
-   build: nginx-acl
+   build: rep
    volumes_from:
      - vol_ssl:rw
    ports:
      - "44300:443"
    links:
-     - testserv
+     - registry
      - authorize
 
 ################################################################

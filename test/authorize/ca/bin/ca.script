@@ -1,0 +1,253 @@
+#!/bin/bash
+
+CaBase="${HomeBase:-$HOME}/ca"
+CaConf="${CaConf:-/etc/ca}"
+
+
+##### for detailed documentation see
+##### https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
+mk_root_ca()
+   {
+      local  name="root.$1" pwd="$2" subject="$3"
+      local  DIR="$CaBase/$name"
+      [ -d "$DIR" ]          &&    return 0
+      [ "$subject" = "" ] \
+      && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=root ca"
+      mkdir -p     $DIR/{certs,csr,crl,newcerts,private}
+      sed "s|%%dir%%|$DIR|"   ${CaConf}/etc/template.root > $DIR/openssl.conf
+      chmod 700    $DIR/private
+      chmod 777    $DIR/certs
+      touch        $DIR/index.txt
+      echo 1000  > $DIR/serial
+      echo 1000  > $DIR/crlnumber
+      # Create the CA Key and Certificate for signing Client Certs
+      openssl genrsa   -des3            -out      $DIR/private/ca.key.pem -passout "pass:$pwd" 4096 \
+      || return 1
+      openssl req -new -x509 -days 7300 -key      $DIR/private/ca.key.pem -passin  "pass:$pwd" \
+                  -sha256               -out      $DIR/certs/ca.cert.pem \
+                  -extensions v3_ca     -config   $DIR/openssl.conf \
+                                        -subj     "/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/CN=root ca" \
+      && openssl x509 -noout -text      -in       $DIR/certs/ca.cert.pem \
+      || return 2
+      rm -f         $CaBase/root
+      ln -s "$DIR" "$CaBase/root"
+      return $?
+   }
+
+##### for detailed documentation see
+##### https://jamielinux.com/docs/openssl-certificate-authority/
+mk_intermediate_ca()
+   {
+      local  name="intermediate.$1" pwd="$2" capwd="$3" subject="$4"
+      local  DIR="$CaBase/$name"
+      [ -d "$DIR" ]          &&    return 0
+      [ "$subject" = "" ] \
+      && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=intermediate ca"
+      local  currentca_conf=$CaBase/root/openssl.conf
+      mkdir -p     $DIR/{certs,csr,crl,newcerts,private}
+      sed "s|%%dir%%|$DIR|"   ${CaConf}/etc/template.intermediate > $DIR/openssl.conf
+      chmod 700    $DIR/private
+      chmod 777    $DIR/certs
+      touch        $DIR/index.txt
+      echo 1000  > $DIR/serial
+      echo 1000  > $DIR/crlnumber
+      # Create the CA Key and Certificate for signing Client Certs
+      openssl genrsa   -des3            -out      $DIR/private/intermediate.key.pem -passout "pass:$pwd" 4096
+      openssl req -new -sha256          -config   $DIR/openssl.conf \
+                                        -key      $DIR/private/intermediate.key.pem -passin  "pass:$pwd" \
+                                        -out      $DIR/csr/intermediate.csr.pem \
+                                        -subj     "$subject" \
+      || return 1
+      openssl ca -extensions v3_intermediate_ca -md sha256 -days 3650 -notext -batch \
+                                        -config   $currentca_conf                   -passin  "pass:$capwd"  \
+                                        -in       $DIR/csr/intermediate.csr.pem \
+                                        -out      $DIR/certs/intermediate.cert.pem \
+      || return 2
+      openssl verify                    -CAfile   ${CaBase}/root/certs/ca.cert.pem \
+                                                  $DIR/certs/intermediate.cert.pem \
+      || return 3
+      cat $DIR/certs/intermediate.cert.pem        ${CaBase}/root.*/certs/ca.cert.pem \
+                                        >         $DIR/certs/ca-chain.cert.pem \
+      || return 4
+      openssl ca -gencrl                -config   $DIR/openssl.conf                 -passin  "pass:$pwd" \
+                                        -out      $DIR/crl/intermediate.crl.pem \
+      || return 5
+      openssl crl           -in       $DIR/crl/intermediate.crl.pem -noout -text
+      ##### todo: if there is an old ca, then perhaps you want
+      #       - to copy/move old certificates
+      #       - re-sign
+      rm -f         $CaBase/intermediate
+      ln -s "$DIR" "$CaBase/intermediate"
+      return $?
+      # crl=$DIR/certs/intermediate.crl.pem 
+   }
+
+
+##### this indirection is currently not usable:
+#####  - enlarge intermediate path length to at least 1
+##### for detailed documentation see
+##### https://jamielinux.com/docs/openssl-certificate-authority/
+mk_client_ca()
+   {
+      local  name="client.$1" pwd="$2" capwd="$3" subject="$4"
+      local  DIR="$CaBase/$name"
+      [ -d "$DIR" ]          &&    return 0
+      [ "$subject" = "" ] \
+      && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=client ca"
+      local  currentca_conf=$CaBase/root/openssl.conf
+      mkdir -p     $DIR/{certs,csr,crl,newcerts,private}
+      sed "s|%%dir%%|$DIR|"   ${CaConf}/etc/template.user > $DIR/openssl.conf
+      chmod 700    $DIR/private
+      chmod 777    $DIR/certs
+      touch        $DIR/index.txt
+      echo 1000  > $DIR/serial
+      echo 1000  > $DIR/crlnumber
+      # Create the CA Key and Certificate for signing Client Certs
+      openssl genrsa   -des3            -out    $DIR/private/intermediate.key.pem -passout pass:$pwd 4096
+      openssl req -new -sha256          -config $DIR/openssl.conf \
+                                        -key    $DIR/private/intermediate.key.pem -passin  pass:$pwd \
+                                        -out    $DIR/csr/intermediate.csr.pem \
+                                        -subj   "$subject" \
+      || return 1
+      openssl ca -extensions v3_intermediate_ca -md sha256 -days 1825 -notext -batch \
+                                        -config $currentca_conf                   -passin  pass:$capwd  \
+                                        -in     $DIR/csr/intermediate.csr.pem \
+                                        -out    $DIR/certs/intermediate.cert.pem \
+      || return 2
+      openssl verify                    -CAfile ${CaBase}/intermediate/certs/ca.cert.pem \
+                                                $DIR/certs/intermediate.cert.pem \
+      || return 3
+      cat $DIR/certs/intermediate.cert.pem      ${CaBase}/intermediate.*/certs/ca.cert.pem \
+                                                ${CaBase}/root.*/certs/ca.cert.pem \
+                                        >       $DIR/certs/ca-chain.cert.pem \
+      || return 4
+      rm -f         $CaBase/client
+      ln -s "$DIR" "$CaBase/client"
+      return $?
+   }
+
+
+
+
+######################### client certificates #########################
+
+check_name()
+   {  ##### todo: a) begin with a character
+      if [ "$1" != "${1/[^-._a-z0-9A-Z@]/}" ]
+         then
+            echo "ERROR: user name contains invalid character(s), allowed are:" >&2
+            echo "       numbers, a-z, A-Z and '._-@'" >&2
+            return 1
+         fi
+      if [ "$1" != "${1#[^a-zA-Z]}" ]
+         then
+            echo "ERROR: user name has to start with an upper or lower letter [a-zA-Z]" >&2
+            return 1
+         fi
+      return 0
+   }
+
+############## die Funktion ist kaputt
+check_pwd()
+   {  ##### test if name contains anything else then "._-@", numbers or characters
+      local check=$(echo "$1" | sed 's/[a-z]//; s/[A-Z]//; s/[0-9]//; s/[-_.@%,/=?:;]//')
+      check="xxx$check"     ##### at least 3 different types are needed
+      [ "$1"  = "${1#*[^-._@%,/=?:;0-9a-zA-Z]}" ]  || check="NNNN$check"
+      if [ "${#1}" -lt 10 ]
+         then
+            echo "ERROR: password has to be at least 10 characters long" >&2
+            return 1
+         fi
+      if [ "${#check}" -gt "${#1}" ]
+         then
+            echo "ERROR: password has to have at lease 3 of these 4 character groups:" >&2
+            echo "       - lower letters" >&2
+            echo "       - upper letters" >&2
+            echo "       - numbers" >&2
+            echo '       - special characters [._-@%,/=?:;]' >&2
+            echo 'KEEP IN MIND: do not use dictionary words or derivates of them!' >&2
+            return 1
+         fi
+      return 0
+   }
+
+##### for detailed documentation see
+##### https://jamielinux.com/docs/openssl-certificate-authority/
+mk_client_cert()
+   {
+      local  name="$1" pwd="$2" capwd="$3" subject="$4"
+      local  DIR="$CaBase/intermediate"
+      [ -f "$DIR/certs/$name.cert.pem" ]          &&    return 0
+      [ "$subject" = "" ] \
+      && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=$name"
+      check_name "$name"          || return 1
+      check_pwd  "$pwd"           || return 1
+      local  currentca_conf=$DIR/openssl.conf
+      mkdir -p   /tmp/client_keys
+      chmod 0700 /tmp/client_keys || return 1
+      ##### create the client key and certificate
+      openssl genrsa   -des3            -out      /tmp/client_keys/$name.key.pem -passout "pass:$pwd" 2048
+      openssl req -new -sha256          -config   $DIR/openssl.conf \
+                                        -key      /tmp/client_keys/$name.key.pem -passin  "pass:$pwd" \
+                                        -out      $DIR/csr/$name.csr.pem \
+                                        -subj     "$subject" \
+      || return 1
+      # openssl ca -extensions v3_intermediate_ca -md sha256 -days 1825 -notext -batch \
+      openssl ca -extensions usr_cert -md sha256 -days 375 -notext -batch \
+                                        -config   $currentca_conf            -passin  "pass:$capwd"  \
+                                        -in       $DIR/csr/$name.csr.pem \
+                                        -out      $DIR/certs/$name.cert.pem \
+      || return 2
+      openssl verify                    -CAfile   ${CaBase}/intermediate/certs/ca-chain.cert.pem \
+                                                  $DIR/certs/$name.cert.pem \
+      || return 3
+      ##### collect it all together -- that makes handling easier
+      openssl pkcs12 -export            -in       $DIR/certs/$name.cert.pem \
+                                        -inkey    /tmp/client_keys/$name.key.pem \
+                                        -CAfile   ${CaBase}/intermediate/certs/ca-chain.cert.pem \
+                                        -name     $name \
+                                        -certfile ${CaBase}/intermediate/certs/ca-chain.cert.pem \
+                                        -passout  "pass:${pwd}" \
+                                        -passin   "pass:${pwd}" \
+                                        -out      /tmp/client_keys/${name}.p12
+                                        #-chain   \
+      ##### todo: copy p12 file to temp. location (nginx)
+      return 0
+   }
+
+##### for detailed documentation see
+##### https://jamielinux.com/docs/openssl-certificate-authority/
+rm_client_cert()
+   {
+      local  name="$1" capwd="$2"
+      local  DIR="$CaBase/intermediate"
+      [ -f "$DIR/certs/$name.cert.pem" ]          ||    return 0
+      openssl    ca                     -config   $DIR/openssl.conf                 -key      "$capwd" \
+                                        -revoke   $DIR/certs/$name.cert.pem     \
+      && openssl ca -gencrl             -config   $DIR/openssl.conf                 -passin  "pass:$capwd" \
+                                        -out      $DIR/crl/intermediate.crl.pem \
+      && rm -f "$DIR/certs/$name.cert.pem"
+      ##### todo: copy crl to nginx dir
+      return $?
+   }
+
+
+test()
+   {
+      CaBase=$HOME/tmp/ca
+      CaConf=$HOME/tmp/etc
+      mkdir -p $CaConf $CaBase
+      rm -rf $CaConf/* $CaBase
+      cp -rp etc.ca/* $CaConf/.
+         mk_root_ca         00                                    root00 \
+      && mk_intermediate_ca 00                               im00 root00 \
+      && mk_client_cert     mr.muster "DasIstS000Geheim..."  im00        \
+      && rm_client_cert     mr.muster                        im00        \
+      echo rc=$?
+   }
+
+
+[ $# -gt 0 ] || exit 1
+"$1" "$2" "$3" "$4" "$5"
+exit 0
+
