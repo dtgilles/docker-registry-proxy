@@ -18,4 +18,15 @@ sed   -e "s;%%DataDir%%;$DataDir;g" \
 >         /etc/nginx/conf.d/default.conf
 chmod 644 /etc/nginx/conf.d/default.conf
 
-exec "$@"
+if [ ! -f $DataDir/certs/server.cert ]
+   then
+      mkdir -p $DataDir/certs
+      pwd=$(genpwd -nsB 20) || pwd=lai8orefe8kdhf
+      echo "$pwd" >> $DataDir/certs/secrets
+      openssl genrsa   -des3           -out    $DataDir/certs/server.key -passout "pass:$pwd" 4096
+      openssl req -new -x509 -days 375 -key    $DataDir/certs/server.key -passin  "pass:$pwd" \
+                       -sha256         -out    $DataDir/certs/server.cert \
+                                       -subj   "/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/CN=$ServerName"
+      openssl verify                   -CAfile $DataDir/certs/server.cert \
+                                               $DataDir/certs/server.cert 
+   fi

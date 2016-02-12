@@ -232,17 +232,22 @@ rm_client_cert()
    }
 
 
-test()
+create_tmp_ca()
    {
-      CaBase=$HOME/tmp/ca
-      CaConf=$HOME/tmp/etc
-      mkdir -p $CaConf $CaBase
-      rm -rf $CaConf/* $CaBase
-      cp -rp etc.ca/* $CaConf/.
-         mk_root_ca         00                                    root00 \
-      && mk_intermediate_ca 00                               im00 root00 \
-      && mk_client_cert     mr.muster "DasIstS000Geheim..."  im00        \
-      && rm_client_cert     mr.muster                        im00        \
+      local CaBase CaConf rootpwd impwd clientpwd rc rootname="${1:-00}" imname="${2:-00}" clientname="${3:-mr.nobody}"
+      CaBase=$PWD/tmp/ca
+      CaConf=$PWD/tmp
+      rm   -rf $CaConf/etc $CaBase
+      mkdir -p $CaConf     $CaBase
+      cp -rp ${0%/bin/*}/etc $CaConf
+      [ -f $CaConf/etc/secrets ] \
+      || pwgen -nsB 16 3 | xargs printf " %s" > $CaConf/etc/secrets \
+      || echo rootpwd impwd clientpwd > $CaConf/etc/secrets
+      read    rootpwd impwd clientpwd < $CaConf/etc/secrets
+         mk_root_ca         $rootname                           $rootpwd \
+      && mk_intermediate_ca $imname                  $impwd     $rootpwd \
+      && mk_client_cert     $clientname   $clientpwd $impwd              \
+      && rm_client_cert     $clientname              $impwd
       echo rc=$?
    }
 
