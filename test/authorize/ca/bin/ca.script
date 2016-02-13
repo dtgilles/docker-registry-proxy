@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 CaBase="${HomeBase:-$HOME}/ca"
 CaConf="${CaConf:-/etc/ca}"
@@ -13,7 +13,7 @@ mk_root_ca()
       [ -d "$DIR" ]          &&    return 0
       [ "$subject" = "" ] \
       && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=root ca"
-      mkdir -p     $DIR/{certs,csr,crl,newcerts,private}
+      (mkdir -p     $DIR && cd $DIR && mkdir -p certs csr crl newcerts private)
       sed "s|%%dir%%|$DIR|"   ${CaConf}/etc/template.root > $DIR/openssl.conf
       chmod 700    $DIR/private
       chmod 777    $DIR/certs
@@ -44,7 +44,7 @@ mk_intermediate_ca()
       [ "$subject" = "" ] \
       && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=intermediate ca"
       local  currentca_conf=$CaBase/root/openssl.conf
-      mkdir -p     $DIR/{certs,csr,crl,newcerts,private}
+      (mkdir -p     $DIR && cd $DIR && mkdir -p certs csr crl newcerts private)
       sed "s|%%dir%%|$DIR|"   ${CaConf}/etc/template.intermediate > $DIR/openssl.conf
       chmod 700    $DIR/private
       chmod 777    $DIR/certs
@@ -95,7 +95,7 @@ mk_client_ca()
       [ "$subject" = "" ] \
       && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=client ca"
       local  currentca_conf=$CaBase/root/openssl.conf
-      mkdir -p     $DIR/{certs,csr,crl,newcerts,private}
+      (mkdir -p     $DIR && cd $DIR && mkdir -p certs csr crl newcerts private)
       sed "s|%%dir%%|$DIR|"   ${CaConf}/etc/template.user > $DIR/openssl.conf
       chmod 700    $DIR/private
       chmod 777    $DIR/certs
@@ -241,18 +241,19 @@ create_tmp_ca()
       mkdir -p $CaConf     $CaBase
       cp -rp ${0%/bin/*}/etc $CaConf
       [ -f $CaConf/etc/secrets ] \
-      || pwgen -nsB 16 3 | xargs printf " %s" > $CaConf/etc/secrets \
-      || echo rootpwd impwd clientpwd > $CaConf/etc/secrets
+      || pwgen -nsB 16 3 | xargs printf " %s" > $CaConf/etc/secrets
+      [ -s $CaConf/etc/secrets ] \
+      && echo root.aie983eoeifidlu im.o8wre7326erddsudfwz client.jfa8er7r326erejhf > $CaConf/etc/secrets
       read    rootpwd impwd clientpwd < $CaConf/etc/secrets
          mk_root_ca         $rootname                           $rootpwd \
       && mk_intermediate_ca $imname                  $impwd     $rootpwd \
       && mk_client_cert     $clientname   $clientpwd $impwd              \
       && rm_client_cert     $clientname              $impwd
-      echo rc=$?
+      return $?
    }
 
 
 [ $# -gt 0 ] || exit 1
 "$1" "$2" "$3" "$4" "$5"
-exit 0
+exit $?
 

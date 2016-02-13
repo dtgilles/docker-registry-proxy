@@ -13,7 +13,7 @@ authorize:
 
 ##### this is the central control server
 git:
-   build: dtgilles/gitolite
+   image: dtgilles/gitolite
    volumes:
      - /data
    environment:

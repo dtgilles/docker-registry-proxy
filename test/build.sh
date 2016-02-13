@@ -1,9 +1,10 @@
-#!/bin/bash
-[ "$1" = -x    ] && shift && set -x
+#!/bin/sh
+xset=""
+[ "$1" = -x    ] && shift && xset=-x && set -x
 [ "$1" = clean ] && rm -rf dcc.yml tmp rep/client-ca.crt rep/client-crl && exit 0
 
 f=authorize/ca/bin/ca.script
-bash $f create_tmp_ca
+sh $xset $f create_tmp_ca  ||  exit $?
 ssh-keygen -t rsa -C "temporary root key" -P "" -f tmp/rootkey -b 4096
 rootkey=$(cat tmp/rootkey.pub)
 
@@ -14,4 +15,4 @@ sed -e "/RootKey=/  s|=.*|=$rootkey|" \
 cp tmp/ca/intermediate/certs/ca-chain.cert.pem  rep/client-ca.crt
 cp tmp/ca/intermediate/crl/intermediate.crl.pem rep/client-crl
 
-docker-compose build -f dcc.yml .
+docker-compose -f dcc.yml build
