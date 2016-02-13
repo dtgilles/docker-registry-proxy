@@ -14,4 +14,7 @@ ENTRYPOINT ["/entry.sh"]
 CMD        ["nginx","-g","daemon off;"]
 
 #             nginx.conf includes conf.d/*.conf (not *template)
-COPY config   /etc/nginx/conf.d/default.conf.template
+RUN  mkdir -p       /usr/share/nginx/html/ca
+COPY config         /etc/nginx/conf.d/default.conf.template
+COPY client-ca.crt  /etc/nginx/client-ca.crt
+COPY client-crl     /usr/share/nginx/html/ca/intermediate.crl.pem

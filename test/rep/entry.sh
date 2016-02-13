@@ -30,3 +30,7 @@ if [ ! -f $DataDir/certs/server.cert ]
       openssl verify                   -CAfile $DataDir/certs/server.cert \
                                                $DataDir/certs/server.cert 
    fi
+if [     -f /etc/nginx/client-ca.crt ]&&[ ! -f $DataDir/certs/client-ca.crt ]
+   then
+      cp -p /etc/nginx/client-ca.crt           $DataDir/certs/client-ca.crt
+   fi

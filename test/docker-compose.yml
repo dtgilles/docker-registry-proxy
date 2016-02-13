@@ -1,12 +1,30 @@
 ##### authorize web-requests and certificate authority
 authorize:
    build: authorize
-   volumes_from:
-     - vol_ssl:rw
+   volumes:
+     - /data
    environment:
      - START_NGNIX=yes
+     - RootKey=
+     - HostKeys=/data/sshd_keys
    ports:
      - "1082:80"
+     - "2201:22"
+
+##### this is the central control server
+git:
+   build: dtgilles/gitolite
+   volumes:
+     - /data
+   environment:
+     - RootKey=
+     - SSH_KEY=
+     - HostKeys=/data/sshd_keys
+     - GIT_DATA=/data/git
+     - EnableFeature=D
+     - DisableFeature=daemon gitweb
+   ports:
+     - "2200:22"
 
 registry:
    image: registry:2
@@ -15,8 +33,13 @@ registry:
 
 rep:
    build: rep
-   volumes_from:
-     - vol_ssl:rw
+   volumes:
+     - /data
+   environment:
+     - DataDir=/data
+     - ServerName=reverse.dreg.com
+   #volumes_from:
+   #  - vol_ssl:rw
    ports:
      - "44300:443"
    links:
