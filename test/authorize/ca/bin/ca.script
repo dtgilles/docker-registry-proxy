@@ -133,15 +133,17 @@ mk_client_ca()
 
 check_name()
    {  ##### todo: a) begin with a character
-      if [ "$1" != "${1/[^-._a-z0-9A-Z@]/}" ]
+      local control=$(echo "$1" | sed 's/[-._a-z0-9A-Z@]//g')
+      if [ "${control}" != "" ]
          then
-            echo "ERROR: user name contains invalid character(s), allowed are:" >&2
+            echo "ERROR: user name '$1' contains at least one invalid character (${control}), allowed are:" >&2
             echo "       numbers, a-z, A-Z and '._-@'" >&2
             return 1
          fi
-      if [ "$1" != "${1#[^a-zA-Z]}" ]
+      if [ "$1" = "${1#[a-zA-Z]}" ]
          then
             echo "ERROR: user name has to start with an upper or lower letter [a-zA-Z]" >&2
+            echo "       '$1'  =?  '${1#[a-zA-Z]}'" >&2
             return 1
          fi
       return 0
@@ -151,14 +153,14 @@ check_name()
 check_pwd()
    {  ##### test if name contains anything else then "._-@", numbers or characters
       local check=$(echo "$1" | sed 's/[a-z]//; s/[A-Z]//; s/[0-9]//; s/[-_.@%,/=?:;]//')
+      local inval=$(echo "$1" | sed 's/[-_.@%,/=?:;a-zA-Z0-9]//g')
       check="xxx$check"     ##### at least 3 different types are needed
-      [ "$1"  = "${1#*[^-._@%,/=?:;0-9a-zA-Z]}" ]  || check="NNNN$check"
       if [ "${#1}" -lt 10 ]
          then
             echo "ERROR: password has to be at least 10 characters long" >&2
             return 1
          fi
-      if [ "${#check}" -gt "${#1}" ]
+      if [ "${#check}" -gt "${#1}" ] || [ "${#inval}"  -gt 0 ]
          then
             echo "ERROR: password has to have at lease 3 of these 4 character groups:" >&2
             echo "       - lower letters" >&2
