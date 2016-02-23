@@ -6,6 +6,8 @@ authorize:
    environment:
      - START_NGNIX=yes
      - RootKey=
+     - CaBase=/data/pki
+     - CaPwdIm=
      - HostKeys=/data/sshd_keys
    ports:
      - "1082:80"

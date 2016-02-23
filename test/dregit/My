@@ -1,0 +1,25 @@
+#!/bin/bash
+
+usage()
+   {
+      echo "usage:"
+      echo "   My help                       -- get this screen"
+      echo "   My name                       -- get my name"
+      echo "   My cert    {create|revoke}    -- create or remove my certificate"
+      echo "   My project list               -- list my projects"
+      echo "   My project <name> {+|-|=} pat -- grant, revoke or list permission of a named project"
+      echo ""
+      echo "where 'pat' is a pattern:"
+      echo " - either an email address"
+      echo " - or a local name (see 'My name')"
+      echo ""
+      exit 0
+   }
+
+case "$1"
+   in
+      name)               echo "$GL_USER"; exit 0;;
+      cert|c|certificate) :;;
+      project|p|proj)     :;;
+      *)                  usage;;
+   esac

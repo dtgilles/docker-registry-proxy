@@ -21,6 +21,8 @@ mk_root_ca()
       echo 1000  > $DIR/serial
       echo 1000  > $DIR/crlnumber
       # Create the CA Key and Certificate for signing Client Certs
+      echo "$pwd"                               > $DIR/private/.secret
+      chmod 0600                                  $DIR/private/.secret
       openssl genrsa   -des3            -out      $DIR/private/ca.key.pem -passout "pass:$pwd" 4096 \
       || return 1
       openssl req -new -x509 -days 7300 -key      $DIR/private/ca.key.pem -passin  "pass:$pwd" \
@@ -29,8 +31,8 @@ mk_root_ca()
                                         -subj     "/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/CN=root ca" \
       && openssl x509 -noout -text      -in       $DIR/certs/ca.cert.pem \
       || return 2
-      rm -f         $CaBase/root
-      ln -s "$DIR" "$CaBase/root"
+      rm -f          $CaBase/root
+      ln -s "$name" "$CaBase/root"
       return $?
    }
 
@@ -52,6 +54,8 @@ mk_intermediate_ca()
       echo 1000  > $DIR/serial
       echo 1000  > $DIR/crlnumber
       # Create the CA Key and Certificate for signing Client Certs
+      echo "$pwd"                               > $DIR/private/.secret
+      chmod 0600                                  $DIR/private/.secret
       openssl genrsa   -des3            -out      $DIR/private/intermediate.key.pem -passout "pass:$pwd" 4096
       openssl req -new -sha256          -config   $DIR/openssl.conf \
                                         -key      $DIR/private/intermediate.key.pem -passin  "pass:$pwd" \
@@ -76,8 +80,8 @@ mk_intermediate_ca()
       ##### todo: if there is an old ca, then perhaps you want
       #       - to copy/move old certificates
       #       - re-sign
-      rm -f         $CaBase/intermediate
-      ln -s "$DIR" "$CaBase/intermediate"
+      rm -f          $CaBase/intermediate
+      ln -s "$name" "$CaBase/intermediate"
       return $?
       # crl=$DIR/certs/intermediate.crl.pem 
    }
@@ -121,8 +125,8 @@ mk_client_ca()
                                                 ${CaBase}/root.*/certs/ca.cert.pem \
                                         >       $DIR/certs/ca-chain.cert.pem \
       || return 4
-      rm -f         $CaBase/client
-      ln -s "$DIR" "$CaBase/client"
+      rm -f          $CaBase/client
+      ln -s "$name" "$CaBase/client"
       return $?
    }
 
@@ -177,11 +181,14 @@ check_pwd()
 ##### https://jamielinux.com/docs/openssl-certificate-authority/
 mk_client_cert()
    {
-      local  name="$1" pwd="$2" capwd="$3" subject="$4"
+      local  name="$1" pwd="$2" capwd="${3:-$CaPwdIm}" subject="$4"
+      local  file="$(mktemp /usr/share/nginx/html/tmpcert/XXXXXXXXXX.p12)
       local  DIR="$CaBase/intermediate"
       [ -f "$DIR/certs/$name.cert.pem" ]          &&    return 0
       [ "$subject" = "" ] \
       && subject="/C=DE/ST=Hessen/L=Darmstadt/O=Security GmbH/OU=department ca/CN=$name"
+      [ "$capwd" = "" ] \
+      && capwd=$(cat "$DIR/private/.secret")
       check_name "$name"          || return 1
       check_pwd  "$pwd"           || return 1
       local  currentca_conf=$DIR/openssl.conf
@@ -211,9 +218,21 @@ mk_client_cert()
                                         -certfile ${CaBase}/intermediate/certs/ca-chain.cert.pem \
                                         -passout  "pass:${pwd}" \
                                         -passin   "pass:${pwd}" \
-                                        -out      /tmp/client_keys/${name}.p12
+                                        -out      "${file}" \
+      && rm /tmp/client_keys/$name.key.pem \
+      && delayed_destruction 120 "$file"
+      && return 0
+      return 1
                                         #-chain   \
-      ##### todo: copy p12 file to temp. location (nginx)
+   }
+
+delayed_destruction()
+   {
+      local sleep=$1 file="$2"
+      chmod 0644 "$file"                || return 1
+      (  sleep $sleep
+         rm "$file"
+      ) &
       return 0
    }
 
@@ -239,7 +258,6 @@ create_tmp_ca()
       local CaBase CaConf rootpwd impwd clientpwd rc rootname="${1:-00}" imname="${2:-00}" clientname="${3:-mr.nobody}"
       CaBase=$PWD/tmp/ca
       CaConf=$PWD/tmp
-      rm   -rf $CaConf/etc $CaBase
       mkdir -p $CaConf     $CaBase
       cp -rp ${0%/bin/*}/etc $CaConf
       [ -f $CaConf/etc/secrets ] \

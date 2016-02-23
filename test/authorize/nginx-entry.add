@@ -8,6 +8,7 @@ if [ "$CA_PASSWORD_ROOT" != "" ]
 
 if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
    then
+      mkdir -p /usr/share/nginx/html/tmpcert
       ##### $START_NGINX is yes, Yes, Ja or ja, so continue starting nginx
       [ -r /etc/default/nginx ] &&  . /etc/default/nginx
       sed   -e "s;%%RP_Dir%%;$RP_Dir;g" \

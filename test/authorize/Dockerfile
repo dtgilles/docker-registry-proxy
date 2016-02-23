@@ -15,7 +15,7 @@ EXPOSE 80
 
 # ENV  CA_PASSWORD_ROOT
 # ENV  CA_PASSWORD_INTERMEDIATE
-# ENV  CaBase                    /data/ca_private
+# ENV  CaBase                    /data/pki
 # ENV  START_NGINX               yes
 
 RUN  f=/usr/share/nginx/html/ok; echo "auth successful" > $f && chmod 0644 $f
