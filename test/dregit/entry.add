@@ -1,0 +1,17 @@
+#### if there is trouble with login try to uncomment this line in '/etc/pam.d/sshd':
+# session    required     pam_loginuid.so
+
+##### directory GIT_DATA must not be /home/git -- while /home/git contains the programs and
+##### will be substituted each time you create a fresh container
+##### GIT_DATA should be on an external volume or volume container
+##### it is recommended to do an regular backup of that!
+##### you could setup:
+#####  - GIT_DATA     /data/git
+#####  - UserDir      /data/user
+#####  - HomeBase     /data/home
+#####  - HostKeys     /data/sshd_keys
+##### ==> /data is delivered by a volume container
+##### ==> /data is backuped
+
+##### register a new command "My"
+su - git -c "sed -i -e \"/'My',/d\" -e \"/'writable'/  a \\            'My',\" .gitolite.rc"

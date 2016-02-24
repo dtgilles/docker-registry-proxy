@@ -19,7 +19,14 @@ usage()
 case "$1"
    in
       name)               echo "$GL_USER"; exit 0;;
-      cert|c|certificate) :;;
+      cert|c|certificate) 
+            case "$2"
+               in
+                  create) ssh root@authorize mk_client_cert --download "${GL_USER}" "$3";;
+                  revoke) ssh root@authorize rm_client_cert            "${GL_USER}"     ;;
+                  *)      echo "cert '$2' is NOT supported" >&2; usage;;
+               esac
+         ;;
       project|p|proj)     :;;
       *)                  usage;;
    esac

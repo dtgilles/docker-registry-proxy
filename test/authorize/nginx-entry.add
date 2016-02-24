@@ -1,6 +1,14 @@
 #!bin/bash 
 
-if [ "$CA_PASSWORD_ROOT" != "" ]
+env | egrep -v "^_=|^PWD=|^SHLVL=|^HOME=" | while IFS== read k v; do echo "export $k='$v'";done > /root/.bash_aliases
+sed -i '/.bash_aliases/ d' /root/.bashrc
+echo ". .bash_aliases"  >> /root/.bashrc
+rm -f         /root/.bash_profile
+ln -s .bashrc /root/.bash_profile
+
+[ -n "$CaBase" ]  && mkdir -p "$CaBase"
+
+if [ "$CA_PASSWORD_ROOT" != "" ] && [ ! -d "$CaBase/intermediate/. ]
    then
       /etc/ca/bin/ca.script mk_root_ca         00                           "$CA_PASSWORD_ROOT"
       /etc/ca/bin/ca.script mk_intermediate_ca 00 "$CA_PASSWORD_INTERDIATE" "$CA_PASSWORD_ROOT"

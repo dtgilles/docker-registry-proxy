@@ -2,22 +2,25 @@
 authorize:
    build: authorize
    volumes:
-     - /data
+     - %%data_dir%%/authorize:/data
    environment:
      - START_NGNIX=yes
      - RootKey=
      - CaBase=/data/pki
-     - CaPwdIm=
+     - CaPwdIm=%%CaPwdIm%%
      - HostKeys=/data/sshd_keys
    ports:
      - "1082:80"
-     - "2201:22"
+     - "1122:22"
 
 ##### this is the central control server
-git:
-   image: dtgilles/gitolite
+dregit:
+   #image: dtgilles/gitolite
+   build: dregit
    volumes:
-     - /data
+     - %%data_dir%%/dregit:/data
+   links:
+     - authorize
    environment:
      - RootKey=
      - SSH_KEY=
@@ -25,8 +28,9 @@ git:
      - GIT_DATA=/data/git
      - EnableFeature=D
      - DisableFeature=daemon gitweb
+     - TRUST_HOSTS=authorize
    ports:
-     - "2200:22"
+     - "1140:22"
 
 registry:
    image: registry:2
@@ -36,7 +40,7 @@ registry:
 rep:
    build: rep
    volumes:
-     - /data
+     - %%data_dir%%/rep:/data
    environment:
      - DataDir=/data
      - ServerName=reverse.dreg.com
@@ -47,13 +51,3 @@ rep:
    links:
      - registry
      - authorize
-
-################################################################
-#                           volumes                            #
-################################################################
-##### private volume for certificate authority
-vol_ssl:
-   image: busybox
-   volumes:
-     - /docker/test/data:/data
-

@@ -1,3 +1,5 @@
 FROM dtgilles/gitolite
 
-#COPY ../tmp/ca ../tmp/etc /usr/share/pki/.
+COPY My /home/git/gitolite/src/commands/
+COPY entry.add /entry.add.20-dregit-init.sh
+

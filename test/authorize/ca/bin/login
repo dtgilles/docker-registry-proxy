@@ -1,8 +1,12 @@
 #!/bin/bash
+xset=""
+[ "$1" = -x ] && xset=-x && shift && set -x
 
-if [ "${SSH_ORIGINAL_COMMAND%[^-.,:;_%/=+!a-zA-Z0-9]*}" != "${SSH_ORIGINAL_COMMAND}" ]
+if [ "${SSH_ORIGINAL_COMMAND%[^-.,:;_%/=+!a-zA-Z0-9 @]*}" != "${SSH_ORIGINAL_COMMAND}" ]
    then
       echo "you used unallowed characters" >&2
+      echo "   ${SSH_ORIGINAL_COMMAND%[^-.,:;_%/=+!a-zA-Z0-9 @]*}"
+      echo "vs ${SSH_ORIGINAL_COMMAND}"
       exit 2
    fi
 
@@ -16,14 +20,14 @@ case "$cmd"
             exit $?
          ;;
       mk_client_cert)
-            ${0%/*}/ca.script mk_client_cert "$arg1" "$arg2"
+            ${0%/*}/ca.script $xset mk_client_cert "$arg1" "$arg2" "$arg3"
             exit $?
          ;;
       rm_client_cert)
-            ${0%/*}/ca.script rm_client_cert "$arg1"
+            ${0%/*}/ca.script $xset rm_client_cert "$arg1"
             exit $?
          ;;
-      *)    echo "unknown command ==> exit with error" >&2
+      *)    echo "unknown command ($cmd) ==> exit with error" >&2
             exit 2
          ;;
    esac
