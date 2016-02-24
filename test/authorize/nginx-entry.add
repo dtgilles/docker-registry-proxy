@@ -1,10 +1,6 @@
 #!bin/bash 
 
-env | egrep -v "^_=|^PWD=|^SHLVL=|^HOME=" | while IFS== read k v; do echo "export $k='$v'";done > /root/.bash_aliases
-sed -i '/.bash_aliases/ d' /root/.bashrc
-echo ". .bash_aliases"  >> /root/.bashrc
-rm -f         /root/.bash_profile
-ln -s .bashrc /root/.bash_profile
+env | egrep -v "^_=|^PWD=|^SHLVL=|^HOME=" | while IFS== read k v; do echo "export $k='$v'";done > /etc/environment
 
 [ -n "$CaBase" ]  && mkdir -p "$CaBase"
 

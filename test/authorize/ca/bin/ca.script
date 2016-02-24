@@ -250,15 +250,18 @@ delayed_destruction()
 ##### https://jamielinux.com/docs/openssl-certificate-authority/
 rm_client_cert()
    {
-      local  name="$1" capwd="$2"
+      local  name="$1" capwd="${2:-$CaPwdIm}"
       local  DIR="$CaBase/intermediate"
       [ -f "$DIR/certs/$name.cert.pem" ]          ||    return 0
+      [ "$capwd" = "" ] \
+      && capwd=$(cat "$DIR/private/.secret")
       openssl    ca                     -config   $DIR/openssl.conf                 -key      "$capwd" \
                                         -revoke   $DIR/certs/$name.cert.pem     \
       && openssl ca -gencrl             -config   $DIR/openssl.conf                 -passin  "pass:$capwd" \
                                         -out      $DIR/crl/intermediate.crl.pem \
       && rm -f "$DIR/certs/$name.cert.pem"
       ##### todo: copy crl to nginx dir
+      ##### todo: sometimes client cert remains if an error occurs
       return $?
    }
 
