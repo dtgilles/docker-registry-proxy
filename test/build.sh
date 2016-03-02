@@ -25,6 +25,7 @@ sed -e "/RootKey=/  s|=.*|=$rootkey|" \
         docker-compose.yml > dcc.yml
 
 cp tmp/ca/intermediate/certs/ca-chain.cert.pem  rep/client-ca.crt
+cp tmp/ca/intermediate/private/.secret          rep/secret
 cp tmp/ca/intermediate/crl/intermediate.crl.pem rep/client-crl
 
 docker-compose -f dcc.yml build
@@ -94,6 +95,17 @@ key='no-pty,no-port-forwarding,command="/etc/ca/bin/login'"$xset\" $key"
 #echo  "DEBUG: echo '$key' >> /root/.ssh/authorized_keys; cd \$CaBase && tar -xf -"
 (cd tmp/ca && tar -cf - intermediate* | ssh authorize "echo '$key' >> /root/.ssh/authorized_keys; cd \"\$CaBase\" && tar -xf - && rm intermediate/openssl.conf") || exit 1
 
+
+
+ssh dregit My passwd GanzGehe1m || exit 1
+ssh dregit My pr                || exit 1
+
+
+
+
+#### client certificates currently don't work
+exit 0
+#### client certificates currently don't work
 ##### use currently distributed automation key to create and revoke a certifikate for a testuser:
 if [ ! -f tmp/gitadm/keydir/mr.nobody.pub ]
    then

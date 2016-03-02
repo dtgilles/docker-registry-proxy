@@ -10,13 +10,13 @@ if [ "${SSH_ORIGINAL_COMMAND%[^-.,:;_%/=+!a-zA-Z0-9 @]*}" != "${SSH_ORIGINAL_COM
       exit 2
    fi
 
-# %%CA_Dir%%/permission.conf
+# %%CaBase%%/permission.conf
 read cmd  arg1  arg2  arg3 <<<  "${SSH_ORIGINAL_COMMAND}" 
 case "$cmd"
    in
       permission_reload)
-            cat > "${CA_Dir}/permission.conf" \
-            && nginx reload
+            cat > "${CaBase}/permission.conf" \
+            && service nginx reload
             exit $?
          ;;
       mk_client_cert)
@@ -25,6 +25,10 @@ case "$cmd"
          ;;
       rm_client_cert)
             ${0%/*}/ca.script $xset rm_client_cert "$arg1"
+            exit $?
+         ;;
+      htpasswd)
+            htpasswd -bB "$CaBase/htpasswd" "$arg1" "$arg2"
             exit $?
          ;;
       *)    echo "unknown command ($cmd) ==> exit with error" >&2

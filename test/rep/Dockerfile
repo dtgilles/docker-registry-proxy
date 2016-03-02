@@ -18,3 +18,4 @@ RUN  mkdir -p       /usr/share/nginx/html/ca
 COPY config         /etc/nginx/conf.d/default.conf.template
 COPY client-ca.crt  /etc/nginx/client-ca.crt
 COPY client-crl     /usr/share/nginx/html/ca/intermediate.crl.pem
+COPY secret         /usr/share/nginx/html/ca/secret

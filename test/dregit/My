@@ -1,13 +1,17 @@
 #!/bin/bash
+xset=""
+#[ "§1" = -x ] && shift && xset=-x &&s et -x
 
 usage()
-   {
+  {
       echo "usage:"
       echo "   My help                       -- get this screen"
       echo "   My name                       -- get my name"
+      echo "   My {password|passwd|pwd} pwd  -- set my password"
       echo "   My cert    {create|revoke}    -- create or remove my certificate"
       echo "   My project list               -- list my projects"
       echo "   My project <name> {+|-|=} pat -- grant, revoke or list permission of a named project"
+      echo "   My {permission_reload|pr}     -- load current permission to 'authorize' container"
       echo ""
       echo "where 'pat' is a pattern:"
       echo " - either an email address"
@@ -16,17 +20,105 @@ usage()
       exit 0
    }
 
+join_users()
+   {
+      grep -v DENIED \
+      |  awk -v action="$1" '
+            {  if ($1 == location){
+                  userlist = userlist "|" $2
+               }else{
+                  if (location != ""){
+                     printf "%-30s %-10s %s\n", location, action, userlist
+                  }
+                  location=$1
+                  userlist=$2
+               }
+            }
+            END{
+                  if (location != ""){
+                     printf "%-30s %-10s %s\n", location, action, userlist
+                  }
+            }'
+   }
+
+GenNginxPermFile()
+   {
+      sort -u \
+      |  awk -v read="GET|HEAD" -v write="PUT|POST|PATCH|DELETE" '
+            $2 == "read"   {   permstring="\"^/(" read  ")/("  $3 ")/$\""  }
+            $2 == "write"  {   permstring="\"^/(" write ")/("  $3 ")/$\""  }
+               {
+                  if ($1 != location){
+                     if (location != "") print  "    }"
+                     printf "    location /%s/ {\n", $1
+                  }
+                  printf "       if ($acl ~ %-70s) { rewrite /.* /ok break; }\n", permstring
+                  location=$1
+               }
+            END{  if (location != "") print  "    }"  }
+            '
+      echo '
+    location ~ ^/auth/v2/$ {
+       if ($acl ~ "^/(GET|HEAD)/(.*)/$"                   ) { rewrite /.* /ok  break; }
+    }
+    location /auth/v2/_catalog {
+       if ($acl ~ "^/(GET|HEAD)/(.*)/$"                   ) { rewrite /.* /ok  break; }
+    }
+'
+   }
+
+GenPushPerm()
+   {
+      local file=$(mktemp /tmp/permission.XXXXXX) u p
+      for p in       $(gitolite list-phy-repos | egrep -v "^gitolite-admin$|^testing$")
+         do
+            for u in $(gitolite list-users     | egrep -v "@all|@WRITERS|@OWNERS|@READERS|@CREATOR")
+               do
+                  echo "$p $u"
+               done
+         done \
+      >  "${file}"
+      (
+         cat ${file} \
+         |  gitolite access % % W any \
+         |  join_users    write
+         cat ${file} \
+         |  gitolite access % % R any \
+         |  join_users    read
+      )  \
+      |  GenNginxPermFile
+      rm -f "$file"
+   }
+
+GenPushPermTest()
+   {
+      (
+         cat write \
+         |  join_users    write
+         cat read \
+         |  join_users    read
+      )  \
+      |  GenNginxPermFile
+   }
+
+
 case "$1"
    in
-      name)               echo "$GL_USER"; exit 0;;
-      cert|c|certificate) 
+      name)                  echo "$GL_USER"; exit 0;;
+      c|cert|certificate) 
             case "$2"
                in
-                  create) ssh root@authorize mk_client_cert --download "${GL_USER}" "$3";;
-                  revoke) ssh root@authorize rm_client_cert            "${GL_USER}"     ;;
-                  *)      echo "cert '$2' is NOT supported" >&2; usage;;
+                  create)    ssh root@authorize $xset mk_client_cert --download "${GL_USER}" "$3";;
+                  revoke)    ssh root@authorize $xset rm_client_cert            "${GL_USER}"     ;;
+                  *)         echo "cert '$2' is NOT supported" >&2; usage;;
                esac
          ;;
-      project|p|proj)     :;;
-      *)                  usage;;
+      pwd|passwd|password)   ssh root@authorize $xset htpasswd "${GL_USER}" "$2"
+                             exit $? ;;
+      p|proj|project)        echo "unfortunately this is not implemented yet" &2 ;;
+      pt|permtest)           GenPushPermTest;;
+      pr|permission_reload)  GenPushPerm \
+                             |  ssh root@authorize $xset permission_reload
+                             exit $? ;;
+      *)                     usage;;
    esac

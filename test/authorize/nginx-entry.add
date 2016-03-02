@@ -4,7 +4,7 @@ env | egrep -v "^_=|^PWD=|^SHLVL=|^HOME=" | while IFS== read k v; do echo "expor
 
 [ -n "$CaBase" ]  && mkdir -p "$CaBase"
 
-if [ "$CA_PASSWORD_ROOT" != "" ] && [ ! -d "$CaBase/intermediate/. ]
+if [ "$CA_PASSWORD_ROOT" != "" ] && [ ! -d "$CaBase/intermediate/." ]
    then
       /etc/ca/bin/ca.script mk_root_ca         00                           "$CA_PASSWORD_ROOT"
       /etc/ca/bin/ca.script mk_intermediate_ca 00 "$CA_PASSWORD_INTERDIATE" "$CA_PASSWORD_ROOT"
@@ -16,21 +16,21 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
       ##### $START_NGINX is yes, Yes, Ja or ja, so continue starting nginx
       [ -r /etc/default/nginx ] &&  . /etc/default/nginx
       sed   -e "s;%%RP_Dir%%;$RP_Dir;g" \
-            -e "s;%%CA_Dir%%;$CA_Dir;g" \
-            -e "s;%%RP_Name%%;$RP_Name;g" \
+            -e "s;%%CaBase%%;$CaBase;g" \
+            -e "s;%%AuthText%%;$AuthText;g" \
       <         /etc/nginx/default.conf.template \
       >         /etc/nginx/sites-enabled/default
       chmod 644 /etc/nginx/sites-enabled/default
-      test -f   $CA_Dir/permission.info \
+      test -f   $CaBase/permission.info \
       || cp     /etc/nginx/perm.info.xmpl \
-                $CA_Dir/permission.info
+                $CaBase/permission.info
       /etc/nginx/perm.sh  \
-                $CA_Dir/permission.info \
-                $CA_Dir/permission.conf
+                $CaBase/permission.info \
+                $CaBase/permission.conf
       #
-      if [ ! -f $CA_Dir/htpasswd ]
+      if [ ! -f $CaBase/htpasswd ]
          then
-            cp /etc/nginx/htpasswd.xmpl   $CA_Dir/htpasswd
+            cp /etc/nginx/htpasswd.xmpl   $CaBase/htpasswd
          fi
       nginx
    fi
