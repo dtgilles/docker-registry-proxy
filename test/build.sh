@@ -1,9 +1,16 @@
 #!/bin/sh
+##### you could call this command like this:
+#####  (  cd ~/git \
+#         && tar -cf - docker-registry-proxy \
+#         |  ssh boot2docker tar -xf - \
+#         && echo 'cdocker-registry-proxy/test && sh build.sh -x ' \
+#         |  ssh boot2docker
+#      ) 2>&1 | more
 xset=""
 data_dir="${data_dir:-/tmp/docker_persist}"
 CaPwdIm="${CaPwdIm:-im.o8wre7326erddsudfwz}"
 [ "$1" = -x    ] && shift && xset=" -x" && set -x
-[ "$1" = clean ] && rm -rf dcc.yml tmp rep/client-ca.crt rep/client-crl && exit 0
+[ "$1" = clean ] && rm -rf dcc.yml tmp rep/client-ca.crt rep/client-crl rep/secret && exit 0
 
 f=authorize/ca/bin/ca.script
 sh $xset $f create_tmp_ca  ||  exit $?
@@ -97,8 +104,8 @@ key='no-pty,no-port-forwarding,command="/etc/ca/bin/login'"$xset\" $key"
 
 
 
-ssh dregit My passwd GanzGehe1m || exit 1
-ssh dregit My pr                || exit 1
+ssh dregit My $xset passwd GanzGehe1m || exit 1
+ssh dregit My $xset pr                || exit 1
 
 
 

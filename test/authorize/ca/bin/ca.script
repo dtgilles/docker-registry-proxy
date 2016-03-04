@@ -1,6 +1,6 @@
 #!/bin/sh
 xset=""
-[ "$1" = -x ] && xset=-x && shift && set -x
+[ "$1" = -x ] && shift && [ "$CI_ENV" = "yes" ] && xset=" -x" && set -x
 
 
 CaBase="${CaBase:-$HOME/ca}"
@@ -285,9 +285,11 @@ create_tmp_ca()
       return $?
    }
 
-##### todo: conf for root and client ca
-[ -f "$CaBase/intermediate/openssl.conf" ] \
-|| sed "s|%%dir%%|$CaBase/intermediate|"   ${CaConf}/etc/template.intermediate >  "$CaBase/intermediate/openssl.conf"
+##### sorry for that hack: during CI I copy the intermediary ca to a different location inside the container
+#####     so I have to remove openssl.conf (with paths that don't fit to container environement)
+[  ! -f "$CaBase/intermediate/openssl.conf" ] \
+&& [ -d "$CaBase/intermediate/." ] \
+&& sed "s|%%dir%%|$CaBase/intermediate|"   ${CaConf}/etc/template.intermediate >  "$CaBase/intermediate/openssl.conf"
 
 [ $# -gt 0 ] || exit 1
 "$1" "$2" "$3" "$4" "$5"

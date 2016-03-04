@@ -4,6 +4,7 @@ authorize:
    volumes:
      - %%data_dir%%/authorize:/data
    environment:
+     - CI_ENV=yes
      - START_NGNIX=yes
      - RootKey=
      - CaBase=/data/pki
@@ -11,7 +12,7 @@ authorize:
      - CaPwdIm=%%CaPwdIm%%
      - HostKeys=/data/sshd_keys
    ports:
-     - "1082:80"
+     - "1120:80"
      - "1122:22"
 
 ##### this is the central control server
@@ -23,6 +24,7 @@ dregit:
    links:
      - authorize
    environment:
+     - CI_ENV=yes
      - RootKey=
      - SSH_KEY=
      - HostKeys=/data/sshd_keys

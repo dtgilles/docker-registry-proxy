@@ -13,5 +13,6 @@
 ##### ==> /data is delivered by a volume container
 ##### ==> /data is backuped
 
+env | egrep -i "^CI_ENV" | while IFS== read k v; do echo "export $k='$v'";done > /etc/environment
 ##### register a new command "My"
 su - git -c "sed -i -e \"/'My',/d\" -e \"/'writable'/  a \\            'My',\" .gitolite.rc"

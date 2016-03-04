@@ -21,4 +21,4 @@ EXPOSE 80
 RUN  f=/usr/share/nginx/html/ok; echo "auth successful" > $f && chmod 0644 $f
 COPY nginx                            /etc/nginx
 COPY ca                               /etc/ca
-COPY nginx-entry.add                  /entry.add.10-authorize.sh
+COPY entry.add                        /entry.add.10-authorize.sh

@@ -1,6 +1,6 @@
 #!/bin/bash
 xset=""
-#[ "§1" = -x ] && shift && xset=-x &&s et -x
+[ "$1" = -x ] && shift && [ "$CI_ENV" = "yes" ] && xset=" -x" && set -x
 
 usage()
   {
