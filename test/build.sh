@@ -12,12 +12,6 @@ CaPwdIm="${CaPwdIm:-im.o8wre7326erddsudfwz}"
 [ "$1" = -x    ] && shift && xset=" -x" && set -x
 [ "$1" = clean ] && rm -rf dcc.yml tmp rep/client-ca.crt rep/client-crl rep/secret && exit 0
 
-f=authorize/ca/bin/ca.script
-sh $xset $f create_tmp_ca  ||  exit $?
-[ -f tmp/rootkey ] \
-|| ssh-keygen -t rsa -C "temporary root key" -P "" -f tmp/rootkey -b 4096
-rootkey=$(cat tmp/rootkey.pub)
-
 
 ##### if persistent data dir does not exist then new ssh host keys would be
 ##### genereated and known_hosts file is invalid ==> delete it to prevent error messages
@@ -25,22 +19,7 @@ rootkey=$(cat tmp/rootkey.pub)
 
 mkdir -p "$data_dir/dregit/sshd_keys" \
          "$data_dir/authorize/sshd_keys" || exit 1
-sed -e "/RootKey=/  s|=.*|=$rootkey|" \
-    -e "/SSH_KEY=/  s|=.*|=$rootkey|" \
-    -e "s|%%data_dir%%|$data_dir|"     \
-    -e "s|%%CaPwdIm%%|$CaPwdIm|"     \
-        docker-compose.yml > dcc.yml
 
-cp tmp/ca/intermediate/certs/ca-chain.cert.pem  rep/client-ca.crt
-cp tmp/ca/intermediate/private/.secret          rep/secret
-cp tmp/ca/intermediate/crl/intermediate.crl.pem rep/client-crl
-
-docker-compose -f dcc.yml build
-
-docker-compose -f dcc.yml kill dregit authorize
-docker-compose -f dcc.yml rm -f dregit authorize
-docker-compose -f dcc.yml up -d dregit authorize || exit 2
-sleep 4
 if ! grep -iq "host  *test_dregit" $HOME/.ssh/config
    then
       (
@@ -85,28 +64,80 @@ if ! grep -iq 'host  *\*$' $HOME/.ssh/config
       echo "StrictHostKeyChecking no"
       ) >> $HOME/.ssh/config
    fi
-##### if access is denied, please check admin-key in dregit-repo!!
-if [ -d tmp/gitadm ]
-   then
-      (cd tmp/gitadm && git pull --rebase)
-   else
-      git clone ssh://dregit/gitolite-admin tmp/gitadm || exit 1
-      (   cd tmp/gitadm                                || exit 1
-          git config user.name   ci-admin              || exit 1
-          git config user.email  ci-admin@nowhere.org  || exit 1
-      )                                                || exit $?
-   fi
-key=$(cat tmp/gitadm/keydir/automation.pub)
-[ -z "$key" ] && echo "no admin key found -- exit with error" >&2 && exit 1
-key='no-pty,no-port-forwarding,command="/etc/ca/bin/login'"$xset\" $key"
-#echo  "DEBUG: echo '$key' >> /root/.ssh/authorized_keys; cd \$CaBase && tar -xf -"
-(cd tmp/ca && tar -cf - intermediate* | ssh authorize "echo '$key' >> /root/.ssh/authorized_keys; cd \"\$CaBase\" && tar -xf - && rm intermediate/openssl.conf") || exit 1
 
 
+prep_ca()
+   {
+      f=authorize/ca/bin/ca.script
+      sh $xset $f create_tmp_ca  ||  exit $?
+      [ -f tmp/rootkey ] \
+      || ssh-keygen -t rsa -C "temporary root key" -P "" -f tmp/rootkey -b 4096
+      rootkey=$(cat tmp/rootkey.pub)
+      sed -e "/RootKey=/  s|=.*|=$rootkey|" \
+          -e "/SSH_KEY=/  s|=.*|=$rootkey|" \
+          -e "s|%%data_dir%%|$data_dir|"     \
+          -e "s|%%CaPwdIm%%|$CaPwdIm|"     \
+              docker-compose.yml > dcc.yml
+      cp tmp/ca/intermediate/certs/ca-chain.cert.pem  rep/client-ca.crt
+      cp tmp/ca/intermediate/private/.secret          rep/secret
+      cp tmp/ca/intermediate/crl/intermediate.crl.pem rep/client-crl
+   }
 
-ssh dregit My $xset passwd GanzGehe1m || exit 1
-ssh dregit My $xset pr                || exit 1
+dcc()
+   {
+      docker-compose -f dcc.yml build
+      docker-compose -f dcc.yml kill dregit authorize
+      docker-compose -f dcc.yml rm -f dregit authorize
+      docker-compose -f dcc.yml up -d dregit authorize || exit 2
+      sleep 8
+   }
 
+##### get automation key
+get_akey()
+   {
+      ##### if access is denied, please check admin-key in dregit-repo!!
+      if [ -d tmp/gitadm ]
+         then
+            (cd tmp/gitadm && git pull --rebase)
+         else
+            git clone ssh://dregit/gitolite-admin tmp/gitadm || exit 1
+            (   cd tmp/gitadm                                || exit 1
+                git config user.name   ci-admin              || exit 1
+                git config user.email  ci-admin@nowhere.org  || exit 1
+            )                                                || exit $?
+         fi
+   }
+
+dist_akey()
+   {
+      key=$(cat tmp/gitadm/keydir/automation.pub)
+      [ -z "$key" ] && echo "no admin key found -- exit with error" >&2 && exit 1
+      key='no-pty,no-port-forwarding,command="/etc/ca/bin/login'"$xset\" $key"
+      #echo  "DEBUG: echo '$key' >> /root/.ssh/authorized_keys; cd \$CaBase && tar -xf -"
+      (cd tmp/ca && tar -cf - intermediate* | ssh authorize "echo '$key' >> /root/.ssh/authorized_keys; cd \"\$CaBase\" && tar -xf - && rm intermediate/openssl.conf") || exit 1
+   }
+
+dcc_up()
+   {
+      [ $(docker-compose -f dcc.yml ps | egrep -ic "authorize.* up |dregit.* up ") = 2 ] \
+      && echo container sind oben \
+      || dcc
+   }
+
+my_()
+   {
+      dcc_up
+      ssh dregit My $xset passwd GanzGehe1m || exit 1
+      ssh dregit My $xset pr                || exit 1
+   }
+
+
+[ $# = 0 ] && set -- prep_ca dcc get_akey dist_akey my_
+while [ $# -gt 0 ]
+   do
+      $1
+      shift
+   done
 
 
 
