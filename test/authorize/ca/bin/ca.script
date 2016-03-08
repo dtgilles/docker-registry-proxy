@@ -184,8 +184,8 @@ check_pwd()
 ##### https://jamielinux.com/docs/openssl-certificate-authority/
 mk_client_cert()
    {
-      local  download=no
-      [ "$1" = --download ] && shift && download=yes
+      local  download=yes
+      [ "$1" = --nodownload ] && shift && download=no
       local  name="$1" pwd="$2" capwd="${3:-$CaPwdIm}" subject="$4"
       local  DIR="$CaBase/intermediate"
       [ -f "$DIR/certs/$name.cert.pem" ]          &&    return 0
@@ -225,24 +225,31 @@ mk_client_cert()
                                         -out      /tmp/client_keys/$name.p12 \
       && rm /tmp/client_keys/$name.key.pem \
       || return 1                       ##### if anything fails then exit (p12 creation or key cleanup)
-      [ "$download" = "yes" ] && [ -d /usr/share/nginx/html/tmp/. ] \
-      || return 0                       ##### OK, there is nothing left to do, so return with success
-      ##### create temp. (pseudo randomized) key name, move p12 file there to download
-      local  file="$(mktemp /usr/share/nginx/html/tmp/XXXXXXXXXX.p12)"
-         mv "/tmp/client_keys/$name.p12" "$file" \
-      && delayed_destruction 120 "$file"   \
-      || return 1
-      return    0
+      if [ "$download" = "yes" ] && [ -d /usr/share/nginx/html/tmp/. ]
+         then
+            ##### create temp. (pseudo randomized) key name, move p12 file there to download
+            local  file="$(mktemp /usr/share/nginx/html/tmp/XXXXXXXXXX.p12)"
+               mv "/tmp/client_keys/$name.p12" "$file" \
+            && delayed_destruction 120 "$file"   \
+            && return 0
+            rm -f /tmp/client_keys/$name.p12
+            return    1
+         else
+            rm -f /tmp/client_keys/$name.p12
+            return 0                       ##### OK, there is nothing left to do, so return with success
+         fi
    }
 
 delayed_destruction()
    {
       local sleep=$1 file="$2"
       chmod 0644 "$file"                || return 1
-      echo "download uri: $TmpUri/${file##*/}"
-      (  sleep $sleep
-         rm "$file"
-      ) &
+      echo "download_uri: $TmpUri/${file##*/}"
+      #echo "$(date +%H:%M:%S)  #### download uri: $TmpUri/${file##*/}"
+      ##### unfortunately sendiing this to background doesn't work
+      #(  sleep $sleep
+      #   rm "$file"
+      #) &
       return 0
    }
 

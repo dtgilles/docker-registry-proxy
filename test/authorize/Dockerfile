@@ -19,6 +19,7 @@ EXPOSE 80
 # ENV  START_NGINX               yes
 
 RUN  f=/usr/share/nginx/html/ok; echo "auth successful" > $f && chmod 0644 $f
+RUN  d=/usr/share/nginx/html/tmp/.; mkdir -p $d && chmod 0755 $d
 COPY nginx                            /etc/nginx
 COPY ca                               /etc/ca
 COPY entry.add                        /entry.add.10-authorize.sh

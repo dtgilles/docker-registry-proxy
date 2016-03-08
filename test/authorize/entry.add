@@ -1,6 +1,6 @@
 #!bin/bash 
 
-env | egrep -i "^Ca|START_NGINX|CI_ENV" | while IFS== read k v; do echo "export $k='$v'";done > /etc/environment
+env | egrep -i "^Ca|START_NGINX|CI_ENV|TmpUri" | while IFS== read k v; do echo "export $k='$v'";done > /etc/environment
 
 [ -n "$CaBase" ]  && mkdir -p "$CaBase"
 

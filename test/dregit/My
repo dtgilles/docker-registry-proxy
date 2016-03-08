@@ -4,20 +4,28 @@ xset=""
 
 usage()
   {
+      local rc="$1"
       echo "usage:"
-      echo "   My help                       -- get this screen"
-      echo "   My name                       -- get my name"
-      echo "   My {password|passwd|pwd} pwd  -- set my password"
-      echo "   My cert    {create|revoke}    -- create or remove my certificate"
-      echo "   My project list               -- list my projects"
-      echo "   My project <name> {+|-|=} pat -- grant, revoke or list permission of a named project"
-      echo "   My {permission_reload|pr}     -- load current permission to 'authorize' container"
+      echo "   My [-x] [-v] command <options>"
+      echo ""
+      echo "   with command:"
+      echo "      help                           -- get this screen"
+      echo "      name                           -- get my name"
+      echo "      {password|passwd|pwd} pwd      -- set my password"
+      echo "      cert {create password|revoke}  -- create or remove my certificate"
+      echo "      project list                   -- list my projects"
+      echo "      project <name> {+|-|=} pat     -- grant, revoke or list permission of a named project"
+      echo "      {permission_reload|pr}         -- load current permission to 'authorize' container"
+      echo ""
+      echo "   options:"
+      echo "      -x             set -x"
+      echo "      -v             some commands support verbose mode"
       echo ""
       echo "where 'pat' is a pattern:"
       echo " - either an email address"
       echo " - or a local name (see 'My name')"
       echo ""
-      exit 0
+      exit $rc
    }
 
 join_users()
@@ -101,24 +109,43 @@ GenPushPermTest()
       |  GenNginxPermFile
    }
 
+##### ATTENTION:  external variables will be set:
+#####   -  retval     stdout + stderr of ssh command
+#####   -  rc         return code of ssh command
+##### used external variables:
+#####   -  xset       remote debug option
+#####   -  verbose    should I print stdout+sterr after command is executed?
+ssh_authorize()
+   {
+      retval=$(ssh root@authorize -- "$xset $*" 2>&1)
+      rc=$?
+      [ "$verbose" = yes ] && echo "$retval"
+      return $rc
+   }
 
+
+verbose=""
+[ "$1" = -v ] && shift && verbose="yes"
 case "$1"
    in
       name)                  echo "$GL_USER"; exit 0;;
       c|cert|certificate) 
             case "$2"
                in
-                  create)    ssh root@authorize $xset mk_client_cert --download "${GL_USER}" "$3";;
-                  revoke)    ssh root@authorize $xset rm_client_cert            "${GL_USER}"     ;;
-                  *)         echo "cert '$2' is NOT supported" >&2; usage;;
+                  create)    ssh_authorize mk_client_cert "${GL_USER}" "$3";;
+                  revoke)    ssh_authorize rm_client_cert "${GL_USER}"     ;;
+                  *)         echo "cert '$2' is NOT supported" >&2; usage 2;;
                esac
+            grep "download.uri" <<< "$retval"
+            echo
+            exit $rc
          ;;
-      pwd|passwd|password)   ssh root@authorize $xset htpasswd "${GL_USER}" "$2"
+      pwd|passwd|password)   ssh_authorize htpasswd "${GL_USER}" "$2"
                              exit $? ;;
       p|proj|project)        echo "unfortunately this is not implemented yet" &2 ;;
       pt|permtest)           GenPushPermTest;;
       pr|permission_reload)  GenPushPerm \
-                             |  ssh root@authorize $xset permission_reload
+                             |  ssh_authorize permission_reload
                              exit $? ;;
       *)                     usage;;
    esac

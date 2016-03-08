@@ -7,12 +7,12 @@ if [ "${SSH_ORIGINAL_COMMAND%[^-.,:;_%/=+!a-zA-Z0-9 @]*}" != "${SSH_ORIGINAL_COM
       exit 2
    fi
 
+read         cmd  arg1  arg2  arg3 <<<  "${SSH_ORIGINAL_COMMAND}" 
 xset=""
-[ "$1" = -x ] && shift && [ "$CI_ENV" = "yes" ] && xset=" -x" && set -x
-
-# %%CaBase%%/permission.conf
-read cmd  arg1  arg2  arg3 <<<  "${SSH_ORIGINAL_COMMAND}" 
-case "$cmd"
+[ "$cmd" = -x ] \
+&& read xset cmd  arg1  arg2  arg3 <<<  "${SSH_ORIGINAL_COMMAND}" 
+[ "$CI_ENV" = "yes" ] || xset=""        ##### overwrite debug option xset, if this is
+case "$cmd"                             ##### not a continuous integration environment
    in
       permission_reload)
             cat > "${CaBase}/permission.conf" \

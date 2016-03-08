@@ -11,6 +11,7 @@ authorize:
      - AuthText=registry-proxy
      - CaPwdIm=%%CaPwdIm%%
      - HostKeys=/data/sshd_keys
+     - TmpUri=https://reg.docklab.telekomcloud.com/tmp
    ports:
      - "1120:80"
      - "1122:22"

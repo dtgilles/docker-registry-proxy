@@ -11,6 +11,9 @@ data_dir="${data_dir:-/tmp/docker_persist}"
 CaPwdIm="${CaPwdIm:-im.o8wre7326erddsudfwz}"
 [ "$1" = -x    ] && shift && xset=" -x" && set -x
 [ "$1" = clean ] && rm -rf dcc.yml tmp rep/client-ca.crt rep/client-crl rep/secret && exit 0
+verbose=""
+[ "$1" = -v    ] && shift && verbose="-v"
+
 
 
 ##### if persistent data dir does not exist then new ssh host keys would be
@@ -86,10 +89,9 @@ prep_ca()
 dcc()
    {
       docker-compose -f dcc.yml build
-      docker-compose -f dcc.yml kill dregit authorize
-      docker-compose -f dcc.yml rm -f dregit authorize
+      docker-compose -f dcc.yml scale dregit=0 authorize=0
       docker-compose -f dcc.yml up -d dregit authorize || exit 2
-      sleep 8
+      sleep 15
    }
 
 ##### get automation key
@@ -127,17 +129,27 @@ dcc_up()
 my_()
    {
       dcc_up
-      ssh dregit My $xset passwd GanzGehe1m || exit 1
-      ssh dregit My $xset pr                || exit 1
+      echo $gleich cert create
+      ssh dregit My $xset $verbose cert create MyP@ssw0rd1sSecret || exit 1
+      echo $gleich cert revoke
+      ssh dregit My $xset $verbose cert revoke                    || exit 1
+      echo $gleich password
+      ssh dregit My $xset $verbose passwd GanzGehe1m || exit 1
+      echo $gleich permission
+      ssh dregit My $xset $verbose pr                || exit 1
    }
 
-
+gleich="============================================"
+printf "%s==============%s\n" $gleich $gleich
 [ $# = 0 ] && set -- prep_ca dcc get_akey dist_akey my_
 while [ $# -gt 0 ]
    do
+      sleep 1
+      printf "%s %-12s %s\n" "$gleich" "$1" "$gleich"
       $1
       shift
    done
+printf "%s==============%s\n" $gleich $gleich
 
 
 
