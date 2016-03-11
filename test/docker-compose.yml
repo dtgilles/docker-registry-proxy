@@ -33,6 +33,7 @@ dregit:
      - EnableFeature=D
      - DisableFeature=daemon gitweb
      - TRUST_HOSTS=authorize
+     - SshGwRepo=sshgw
    ports:
      - "1140:22"
 

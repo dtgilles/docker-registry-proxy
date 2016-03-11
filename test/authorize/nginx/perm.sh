@@ -5,7 +5,8 @@ output=${2:-${input%.info}.conf}
 
 ##### helping functin to print acl config line
 print_acl_line()
-   {
+   {  ##### don't print anything if opening bracket is missed (first != no)
+      [ "$first" = no ] || return 0
       printf '       if ($acl ~ %-40s) { rewrite /.* /ok  break; }\n' \
                     "\"^/(${http_method})/(${user})/$\""
    }

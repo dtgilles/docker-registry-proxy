@@ -18,10 +18,10 @@ verbose=""
 
 ##### if persistent data dir does not exist then new ssh host keys would be
 ##### genereated and known_hosts file is invalid ==> delete it to prevent error messages
-[ -d "$data_dir" ] || rm $HOME/.ssh/known_hosts
+[ -d "$data_dir" ] || rm -rf $HOME/.ssh/known_hosts tmp/sshgw
 
 mkdir -p "$data_dir/dregit/sshd_keys" \
-         "$data_dir/authorize/sshd_keys" || exit 1
+         "$data_dir/authorize/sshd_keys"
 
 if ! grep -iq "host  *test_dregit" $HOME/.ssh/config
    then
@@ -126,22 +126,57 @@ dcc_up()
       || dcc
    }
 
+prep_sshgw()
+   {
+      ##### create a wild repo sshgw,
+      ##### grant permission to it,
+      ##### create a special read user (not used yet)
+      ##### and checkout/configure this wild repo
+      (
+         cd tmp/gitadm
+         if ! grep -q sshgw conf/gitolite.conf
+            then
+               echo "repo sshgw"
+               echo "    C       =   admin"
+               echo "    RW+     =   admin"
+               echo "    R       =   sshgw_sync"
+            fi \
+         >> conf/gitolite.conf
+         if [ ! -f keydir/sshgw_sync.pub ]
+            then
+               rm -f keydir/sshgw_sync
+               ssh-keygen -t rsa -C "temporary test key" -P "" -f keydir/sshgw_sync -b 2048
+            fi
+         git add keydir/sshgw_sync.pub conf/gitolite.conf                || exit 1
+         git commit -am "added 'sshgw_sync' for test purposes"           || exit 1
+         git push origin                                                 || exit 1
+      )
+      ##### create that initially in order to test auto creation of
+      ##### ssh gateway user directory
+      [ -d tmp/sshgw ]||git clone ssh://dregit/sshgw tmp/sshgw
+      (   cd tmp/sshgw                                 || exit 1
+          git config user.name   ci-admin              || exit 1
+          git config user.email  ci-admin@nowhere.org  || exit 1
+      )                                                || exit $?
+   }
+
 my_()
    {
       dcc_up
-      echo $gleich cert create
+      [ -d tmp/sshgw ] || prep_sshgw
+      echo $gleich  cert create
       ssh dregit My $xset $verbose cert create MyP@ssw0rd1sSecret || exit 1
-      echo $gleich cert revoke
+      echo $gleich  cert revoke
       ssh dregit My $xset $verbose cert revoke                    || exit 1
-      echo $gleich password
+      echo $gleich  password
       ssh dregit My $xset $verbose passwd GanzGehe1m || exit 1
-      echo $gleich permission
+      echo $gleich  permission
       ssh dregit My $xset $verbose pr                || exit 1
    }
 
 gleich="============================================"
 printf "%s==============%s\n" $gleich $gleich
-[ $# = 0 ] && set -- prep_ca dcc get_akey dist_akey my_
+[ $# = 0 ] && set -- prep_ca dcc get_akey dist_akey prep_sshgw my_
 while [ $# -gt 0 ]
    do
       sleep 1

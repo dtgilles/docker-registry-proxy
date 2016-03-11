@@ -42,4 +42,7 @@ server {
        proxy_set_header        ssl_user           $ssl_user;
        proxy_set_header        Authorization      $http_authorization;
     }
+    location /tmp/ {
+       proxy_pass              http://authorize;
+    }
 }

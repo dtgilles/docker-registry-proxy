@@ -10,9 +10,12 @@
 #####  - UserDir      /data/user
 #####  - HomeBase     /data/home
 #####  - HostKeys     /data/sshd_keys
+#####  - CI_ENV       if this is "yes" My allows option "-x" for debug
+#####  - SshGwRepo    if this is set and the named repo exists then a UserDir according to
+#####                 dtgilles/sshgw will be created (for zam keys only)
 ##### ==> /data is delivered by a volume container
 ##### ==> /data is backuped
 
-env | egrep -i "^CI_ENV" | while IFS== read k v; do echo "export $k='$v'";done > /etc/environment
+env | egrep -i "^CI_ENV|SshGwRepo" | while IFS== read k v; do echo "export $k='$v'";done > /etc/environment
 ##### register a new command "My"
 su - git -c "sed -i -e \"/'My',/d\" -e \"/'writable'/  a \\            'My',\" .gitolite.rc"

@@ -58,7 +58,7 @@ GenNginxPermFile()
                {
                   if ($1 != location){
                      if (location != "") print  "    }"
-                     printf "    location /%s/ {\n", $1
+                     printf "    location /auth/%s/ {\n", $1
                   }
                   printf "       if ($acl ~ %-70s) { rewrite /.* /ok break; }\n", permstring
                   location=$1
@@ -75,27 +75,60 @@ GenNginxPermFile()
 '
    }
 
+GenSshGwRepo()
+   {
+      ##### if any of the following conditions are not fullfilled then do nothing...:
+      [ -n "$SshGwRepo"                            ] || return 0
+      [ -d "$HOME/repositories/$SshGwRepo.git"     ] || return 0
+      [ -f "$1"                                    ] || return 1
+      export GIT_WORK_TREE="$HOME/.sshgw"
+      [ "$verbose" = yes ] && echo "generating sshgw user directory" >&2
+      mkdir -p "$GIT_WORK_TREE/user"                 || return 2
+      cd   "$HOME/repositories/$SshGwRepo.git"       || return 1
+      git checkout -- "$GIT_WORK_TREE"
+      rm -rf "$GIT_WORK_TREE/user"
+      while read user
+         do
+            [ "${user#zam_}" = "$user" ]             && continue   ##### must be a human
+            [ "${user#*[^-a-zA-Z_,%@=~]}" = "$user" ]|| continue   ##### this is not a valid username
+            [ -f "$HOME/.gitolite/keydir/$user.pub" ]|| continue   ##### this user has no key
+            mkdir -p "$GIT_WORK_TREE/user/$user"
+            cp "$HOME/.gitolite/keydir/$user.pub" "$GIT_WORK_TREE/user/$user/key"
+            echo "/usr/local/bin/LoginSleep"    > "$GIT_WORK_TREE/user/$user/shell"
+         done \
+      <  "$1"
+      git add -A "$GIT_WORK_TREE"                               >/dev/null
+      git config user.name  "GenSshGwRepo My"                   >/dev/null
+      git config user.email my@gitolite                         >/dev/null
+      git commit -am "genereated sshgw user tree automatically" >/dev/null
+      [ "$verbose" = yes ] && echo "...done"                    >&2
+   }
+
 GenPushPerm()
    {
       local file=$(mktemp /tmp/permission.XXXXXX) u p
+      local ulist=$(mktemp  /tmp/userlist.XXXXXX) created=no
       for p in       $(gitolite list-phy-repos | egrep -v "^gitolite-admin$|^testing$")
          do
             for u in $(gitolite list-users     | egrep -v "@all|@WRITERS|@OWNERS|@READERS|@CREATOR")
                do
                   echo "$p $u"
+                  [ "$created" = yes ] || echo "$u"   >> "$ulist"
                done
+            created=yes
          done \
-      >  "${file}"
+      >  "${file}"                      ##### file:   project user
       (
          cat ${file} \
          |  gitolite access % % W any \
-         |  join_users    write
+         |  join_users    write         #####         project write user1|user2
          cat ${file} \
          |  gitolite access % % R any \
-         |  join_users    read
+         |  join_users    read          #####         project read  user1|user2|user3|user4
       )  \
-      |  GenNginxPermFile
-      rm -f "$file"
+      |  GenNginxPermFile               #####  ==>  transcode that to nginx format and push it to authorize
+      GenSshGwRepo "$ulist"             #####  ==>  generate user dir for ssh gateways if a repo is defined
+      rm -f "$file" "$ulist"
    }
 
 GenPushPermTest()
