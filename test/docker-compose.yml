@@ -9,6 +9,7 @@ authorize:
      - RootKey=
      - CaBase=/data/pki
      - AuthText=registry-proxy
+     - BasicAuth=#
      - CaPwdIm=%%CaPwdIm%%
      - HostKeys=/data/sshd_keys
      - TmpUri=https://reg.docklab.telekomcloud.com/tmp

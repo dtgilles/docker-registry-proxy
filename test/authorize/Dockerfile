@@ -17,6 +17,7 @@ EXPOSE 80
 # ENV  CA_PASSWORD_INTERMEDIATE
 # ENV  CaBase                    /data/pki
 # ENV  START_NGINX               yes
+# ENV  BasicAuth                 #
 
 RUN  f=/usr/share/nginx/html/ok; echo "auth successful" > $f && chmod 0644 $f
 RUN  d=/usr/share/nginx/html/tmp/.; mkdir -p $d && chmod 0755 $d

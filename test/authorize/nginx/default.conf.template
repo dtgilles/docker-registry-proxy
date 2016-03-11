@@ -2,12 +2,12 @@ server {
     listen                      80;
     server_name                 localhost;
     root                        /usr/share/nginx/html;
-    set       $username         $http_ssl_user;
-    auth_basic                 "%%AuthText%%";
-    auth_basic_user_file        %%CaBase%%/htpasswd;
-    if ($username != "anonymous") {
-       set     $username        $remote_user;
-    }
+    set     $username           $http_ssl_user;
+   %%BasicAuth%% auth_basic                 "%%AuthText%%";
+   %%BasicAuth%% auth_basic_user_file        %%CaBase%%/htpasswd;
+   %%BasicAuth%% if ($username != "anonymous") {
+   %%BasicAuth%%    set     $username        $remote_user;
+   %%BasicAuth%% }
     set     $acl               "/$request_method/$username/";
     #
     location /auth/ {
