@@ -13,8 +13,8 @@ usage()
       echo "      name                           -- get my name"
       echo "      {password|passwd|pwd} pwd      -- set my password"
       echo "      cert {create password|revoke}  -- create or remove my certificate"
-      echo "      project list                   -- list my projects"
-      echo "      project <name> {+|-|=} pat     -- grant, revoke or list permission of a named project"
+      #echo "      project list                   -- list my projects"
+      #echo "      project <name> {+|-|=} pat     -- grant, revoke or list permission of a named project"
       echo "      {permission_reload|pr}         -- load current permission to 'authorize' container"
       echo ""
       echo "   options:"
@@ -176,7 +176,7 @@ case "$1"
       pwd|passwd|password)   ssh_authorize htpasswd "${GL_USER}" "$2"
                              exit $? ;;
       p|proj|project)        echo "unfortunately this is not implemented yet" &2 ;;
-      pt|permtest)           GenPushPermTest;;
+      pt|permtest)           [ "$CI_ENV" = "yes" ] && GenPushPermTest;;
       pr|permission_reload)  GenPushPerm \
                              |  ssh_authorize permission_reload
                              exit $? ;;

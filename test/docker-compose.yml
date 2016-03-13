@@ -12,7 +12,7 @@ authorize:
      - BasicAuth=#
      - CaPwdIm=%%CaPwdIm%%
      - HostKeys=/data/sshd_keys
-     - TmpUri=https://reg.docklab.telekomcloud.com/tmp
+     - TmpUri=https://localhost:44300/tmp
    ports:
      - "1120:80"
      - "1122:22"

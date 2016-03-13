@@ -4,7 +4,7 @@ server {
     server_name   %%ServerName%%;
     #
     set $ssl_client_s_dn    "not found";
-    ssl_certificate         %%DataDir%%/certs/server.crt;
+    ssl_certificate         %%DataDir%%/certs/server.cert;
     ssl_certificate_key     %%DataDir%%/certs/server.key;
     ssl_client_certificate  %%DataDir%%/certs/client-ca.crt;
     ssl_password_file       %%DataDir%%/certs/secrets;

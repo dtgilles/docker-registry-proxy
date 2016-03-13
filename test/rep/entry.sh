@@ -34,3 +34,7 @@ if [     -f /etc/nginx/client-ca.crt ]&&[ ! -f $DataDir/certs/client-ca.crt ]
    then
       cp -p /etc/nginx/client-ca.crt           $DataDir/certs/client-ca.crt
    fi
+
+[ $# = 0 ] && set -- nginx -g "daemon off;"
+exec "$@"
+

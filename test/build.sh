@@ -21,20 +21,8 @@ verbose=""
 [ -d "$data_dir" ] || rm -rf $HOME/.ssh/known_hosts tmp/sshgw
 
 mkdir -p "$data_dir/dregit/sshd_keys" \
-         "$data_dir/authorize/sshd_keys"
+         "$data_dir/authorize/sshd_keys" 2>/dev/null
 
-if ! grep -iq "host  *test_dregit" $HOME/.ssh/config
-   then
-      (
-      echo
-      echo "Host          test_dregit"
-      echo "HostName      localhost"
-      echo "User          git"
-      echo "Port          1140"
-      echo "IdentityFile  $PWD/tmp/gitadm/keydir/mr.nobody"
-      echo "StrictHostKeyChecking no"
-      ) >> $HOME/.ssh/config
-   fi
 if ! grep -iq "host  *dregit" $HOME/.ssh/config
    then
       (
@@ -90,7 +78,7 @@ dcc()
    {
       docker-compose -f dcc.yml build
       docker-compose -f dcc.yml scale dregit=0 authorize=0
-      docker-compose -f dcc.yml up -d dregit authorize || exit 2
+      docker-compose -f dcc.yml up -d dregit rep || exit 2
       sleep 15
    }
 
@@ -139,6 +127,7 @@ prep_sshgw()
                echo "repo sshgw"
                echo "    C       =   admin"
                echo "    RW+     =   admin"
+               echo "    RW      =   automation"
                echo "    R       =   sshgw_sync"
             fi \
          >> conf/gitolite.conf
@@ -160,14 +149,34 @@ prep_sshgw()
       )                                                || exit $?
    }
 
+create_client_cert()
+   {
+      local output rc=0 uri
+      output=$(ssh dregit My $xset $verbose cert create MyP@ssw0rd1sSecret) || rc=$?
+      echo "$output"
+      [ "$rc" -gt 0 ] && return 1
+      echo "$output" \
+      |  while IFS=":" read key value
+         do
+            [ "$key" = "download_uri" ] || continue
+            uri="${value# }"
+            https_proxy="" curl -k $uri > /dev/null \
+            && echo "private certificate successfully downloaded" \
+            || echo "download of private certificate failed"
+            return 0
+         done
+      echo 'no download uri detected -- debug that!'
+      return 0
+   }
+
 my_()
    {
       dcc_up
       [ -d tmp/sshgw ] || prep_sshgw
       echo $gleich  cert create
-      ssh dregit My $xset $verbose cert create MyP@ssw0rd1sSecret || exit 1
+      create_client_cert                             || exit 1
       echo $gleich  cert revoke
-      ssh dregit My $xset $verbose cert revoke                    || exit 1
+      ssh dregit My $xset $verbose cert revoke       || exit 1
       echo $gleich  password
       ssh dregit My $xset $verbose passwd GanzGehe1m || exit 1
       echo $gleich  permission
@@ -186,24 +195,4 @@ while [ $# -gt 0 ]
    done
 printf "%s==============%s\n" $gleich $gleich
 
-
-
-#### client certificates currently don't work
 exit 0
-#### client certificates currently don't work
-##### use currently distributed automation key to create and revoke a certifikate for a testuser:
-if [ ! -f tmp/gitadm/keydir/mr.nobody.pub ]
-   then
-      (
-         cd tmp/gitadm/keydir                                                     || exit 1
-         rm -f mr.nobody
-         ssh-keygen -t rsa -C "temporary test key" -P "" -f mr.nobody -b 2048     || exit 1
-         git add mr.nobody.pub                                                    || exit 1
-         git commit -am "new user 'mr.nobody' for test purposes -- remove that user in production environments"
-         git push origin                                                          || exit 1
-      ) || exit $?
-   fi
-
-ssh test_dregit My name
-ssh test_dregit My cert create MyP@ssw0rd1sSecret
-ssh test_dregit My cert revoke
