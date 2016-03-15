@@ -11,6 +11,22 @@ if [ "$CA_PASSWORD_ROOT" != "" ] && [ ! -d "$CaBase/intermediate/." ]
       /etc/ca/bin/ca.script mk_intermediate_ca 00 "$CA_PASSWORD_INTERDIATE" "$CA_PASSWORD_ROOT"
    fi
 
+rm_old_tmp()
+   {
+      local sleeptime="${SecondsUntilCleanTmp:-120}" inode=""
+      local controlfile=$(mktemp /tmp/rm_old_tmp_XXXXXXXX)
+      [ -f "$controlfile" ] || return 3        ##### this should exist -- we created it one line before
+      while sleep 10
+         do
+            touch -t $(date -d "-$sleeptime sec" +%Y%m%d%H%M.%S) $controlfile || return 1
+            for inode in /usr/share/nginx/html/tmp/*
+               do
+                  [ -f "$inode" ] || continue
+                  [ "$inode" -ot "$controlfile" ] && rm -f "$inode"
+               done
+         done
+   }
+
 if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
    then
       mkdir -p /usr/share/nginx/html/tmpcert
@@ -34,5 +50,6 @@ if [ "${START_NGNIX#[yYjJ]}" != "$START_NGINX" ]
          then
             cp /etc/nginx/htpasswd.xmpl   $CaBase/htpasswd
          fi
+      rm_old_tmp &
       nginx
    fi

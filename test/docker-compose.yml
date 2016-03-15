@@ -13,6 +13,7 @@ authorize:
      - CaPwdIm=%%CaPwdIm%%
      - HostKeys=/data/sshd_keys
      - TmpUri=https://localhost:44300/tmp
+     - SecondsUntilCleanTmp=120
    ports:
      - "1120:80"
      - "1122:22"
