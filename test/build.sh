@@ -122,10 +122,10 @@ prep_sshgw()
       ##### and checkout/configure this wild repo
       (
          cd tmp/gitadm
+         git pull --rebase
          if ! grep -q sshgw conf/gitolite.conf
             then
                echo "repo sshgw"
-               echo "    C       =   admin"
                echo "    RW+     =   admin"
                echo "    RW      =   automation"
                echo "    R       =   sshgw_sync"
@@ -135,8 +135,9 @@ prep_sshgw()
             then
                rm -f keydir/sshgw_sync
                ssh-keygen -t rsa -C "temporary test key" -P "" -f keydir/sshgw_sync -b 2048
+               grep -q keydir/sshgw_sync .gitignore  ||  echo keydir/sshgw_sync >> .gitignore
             fi
-         git add keydir/sshgw_sync.pub conf/gitolite.conf                || exit 1
+         git add keydir/sshgw_sync.pub conf/gitolite.conf .gitignore     || exit 1
          git commit -am "added 'sshgw_sync' for test purposes"           || exit 1
          git push origin                                                 || exit 1
       )
@@ -144,6 +145,7 @@ prep_sshgw()
       ##### ssh gateway user directory
       [ -d tmp/sshgw ]||git clone ssh://dregit/sshgw tmp/sshgw
       (   cd tmp/sshgw                                 || exit 1
+          git pull --rebase                            || exit 1
           git config user.name   ci-admin              || exit 1
           git config user.email  ci-admin@nowhere.org  || exit 1
       )                                                || exit $?
