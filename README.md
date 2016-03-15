@@ -6,6 +6,10 @@ ssl client certificates, for request authorization it asks "authorization".
 !!! THIS IS ALPHA !!!
 
 ## build and install
+prerequirements:
+* git, pwgen and docker-compose should be in $PATH
+* set $data_dir, otherwize build.sh would work in /tmp/docker_persist
+
 To do a fist test installation go to "test/" and call "build.sh" without any
 parameters. This will:
 * create a private certificate authority (root + intermediary) and test
