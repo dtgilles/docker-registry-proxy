@@ -8,7 +8,6 @@
 #      ) 2>&1 | more
 xset=""
 data_dir="${data_dir:-/tmp/docker_persist}"
-CaPwdIm="${CaPwdIm:-im.o8wre7326erddsudfwz}"
 [ "$1" = -x    ] && shift && xset=" -x" && set -x
 [ "$1" = clean ] && rm -rf dcc.yml tmp rep/client-ca.crt rep/client-crl rep/secret && exit 0
 verbose=""
@@ -61,6 +60,7 @@ prep_ca()
    {
       f=authorize/ca/bin/ca.script
       sh $xset $f create_tmp_ca  ||  exit $?
+      read CaPwdRoot CaPwdIm CaPwdClient < tmp/etc/secrets
       [ -f tmp/rootkey ] \
       || ssh-keygen -t rsa -C "temporary root key" -P "" -f tmp/rootkey -b 4096
       rootkey=$(cat tmp/rootkey.pub)
